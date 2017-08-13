@@ -14,15 +14,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import theano, numpy
+import theano
+import numpy
 import theano.tensor as T
 import time
 import sys
 from collections import defaultdict
 
+
 class BPR(object):
 
-    def __init__(self, rank, n_users, n_items, lambda_u = 0.0025, lambda_i = 0.0025, lambda_j = 0.00025, lambda_bias = 0.0, learning_rate = 0.05):
+    def __init__(self, rank, n_users, n_items, lambda_u=0.0025, lambda_i=0.0025, lambda_j=0.00025, lambda_k=0.00025, lambda_bias=0.0, learning_rate=0.05):
         """
           Creates a new object for training and testing a Bayesian
           Personalised Ranking (BPR) Matrix Factorisation 
@@ -81,6 +83,7 @@ class BPR(object):
         self._lambda_u = lambda_u
         self._lambda_i = lambda_i
         self._lambda_j = lambda_j
+        self._lambda_k = lambda_k
         self._lambda_bias = lambda_bias
         self._learning_rate = learning_rate
         self._train_users = set()
@@ -118,28 +121,39 @@ class BPR(object):
         u = T.lvector('u')
         i = T.lvector('i')
         j = T.lvector('j')
+        k = T.lvector('k')
 
-        self.W = theano.shared(numpy.random.random((self._n_users, self._rank)).astype('float32'), name='W')
-        self.H = theano.shared(numpy.random.random((self._n_items, self._rank)).astype('float32'), name='H')
+        self.W = theano.shared(numpy.random.random(
+            (self._n_users, self._rank)).astype('float32'), name='W')
+        self.H = theano.shared(numpy.random.random(
+            (self._n_items, self._rank)).astype('float32'), name='H')
 
-        self.B = theano.shared(numpy.zeros(self._n_items).astype('float32'), name='B')
+        self.B = theano.shared(numpy.zeros(
+            self._n_items).astype('float32'), name='B')
 
         x_ui = T.dot(self.W[u], self.H[i].T).diagonal()
         x_uj = T.dot(self.W[u], self.H[j].T).diagonal()
+        x_uk = T.dot(self.W[u], self.H[j].T).diagonal()
 
         x_uij = self.B[i] - self.B[j] + x_ui - x_uj
+        x_ujk = self.B[j] - self.B[k] + x_hj - x_uk
 
-        obj = T.sum(T.log(T.nnet.sigmoid(x_uij)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_i * (self.H[i] ** 2).sum(axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
-        cost = - obj
+        obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_i * (self.H[i] ** 2).sum(
+            axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
+        obj_ujk = T.sum(T.log(T.nnet.sigmoid(x_ujk)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_j * (self.H[j] ** 2).sum(
+            axjs=1) - self._lambda_k * (self.H[k] ** 2).sum(axis=1) - self._lambda_bias * (self.B[j] ** 2 + self.B[k] ** 2))
+        cost = - obj_uij - obj_ujk
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
         g_cost_B = T.grad(cost=cost, wrt=self.B)
-        self.get_g_cost_B = theano.function(inputs=[u,i,j], outputs=g_cost_B)
+        # self.get_g_cost_B = theano.function(inputs=[u, i, j], outputs=g_cost_B)
 
-        updates = [ (self.W, self.W - self._learning_rate * g_cost_W), (self.H, self.H - self._learning_rate * g_cost_H), (self.B, self.B - self._learning_rate * g_cost_B) ]
+        updates = [(self.W, self.W - self._learning_rate * g_cost_W), (self.H, self.H -
+                                                                       self._learning_rate * g_cost_H), (self.B, self.B - self._learning_rate * g_cost_B)]
 
-        self.train_model = theano.function(inputs=[u, i, j], outputs=cost, updates=updates)
+        self.train_model = theano.function(
+            inputs=[u, i, j, k ], outputs=cost, updates=updates)
 
     def train(self, train_data, epochs=30, batch_size=1000):
         """
@@ -156,26 +170,32 @@ class BPR(object):
           descent for the batch.
         """
         if len(train_data) < batch_size:
-            sys.stderr.write("WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
+            sys.stderr.write(
+                "WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
             batch_size = len(train_data)
-        self._train_dict, self._train_users, self._train_items = self._data_to_dict(train_data)
+        self._train_dict, self._train_users, self._train_items = self._data_to_dict(
+            train_data)
         n_sgd_samples = len(train_data) * epochs
-        sgd_users, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(n_sgd_samples)
+        sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
+            n_sgd_samples)
         z = 0
         t2 = t1 = t0 = time.time()
-        while (z+1)*batch_size < n_sgd_samples:
+        while (z + 1) * batch_size < n_sgd_samples:
             self.train_model(
-                sgd_users[z*batch_size: (z+1)*batch_size],
-                sgd_pos_items[z*batch_size: (z+1)*batch_size],
-                sgd_neg_items[z*batch_size: (z+1)*batch_size]
+                sgd_users[z * batch_size: (z + 1) * batch_size],
+                sgd_match_items[z * batch_size: (z + 1) * batch_size], 
+                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
+                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
             )
             z += 1
             t2 = time.time()
-            sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" %(str(z*batch_size), 100.0 * float(z*batch_size)/n_sgd_samples, t2 - t1))
+            sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (
+                str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
             sys.stderr.flush()
-            t1 = t2
+            # t1 = t2
         if n_sgd_samples > 0:
-            sys.stderr.write("\nTotal training time %.2f seconds; %e per sample\n" % (t2 - t0, (t2 - t0)/n_sgd_samples))
+            sys.stderr.write("\nTotal training time %.2f seconds; %e per sample\n" % (
+                t2 - t0, (t2 - t0) / n_sgd_samples))
             sys.stderr.flush()
 
     def _uniform_user_sampling(self, n_samples):
@@ -185,17 +205,23 @@ class BPR(object):
           and then sample a positive and a negative item for each 
           user sample.
         """
-        sys.stderr.write("Generating %s random training samples\n" % str(n_samples))
-        sgd_users = numpy.array(list(self._train_users))[numpy.random.randint(len(list(self._train_users)), size=n_samples)]
-        sgd_pos_items, sgd_neg_items = [], []
+        sys.stderr.write(
+            "Generating %s random training samples\n" % str(n_samples))
+        sgd_users = numpy.array(list(self._train_users))[numpy.random.randint(
+            len(list(self._train_users)), size=n_samples)]
+        sgd_match_items, sgd_pos_items, sgd_neg_items = [], [], []
         for sgd_user in sgd_users:
-            pos_item = self._train_dict[sgd_user][numpy.random.randint(len(self._train_dict[sgd_user]))]
-            sgd_pos_items.append(pos_item)
+            pos_item = self._train_dict[sgd_user][
+                numpy.random.randint(len(self._train_dict[sgd_user]))]
+            sgd_pos_items.append(pos_item)              
+            if pos_item in self._train_dict:
+                if sgd_user in self._train_dict[pos_item]:
+                    sgd_match_items.append(pos_item)
             neg_item = numpy.random.randint(self._n_items)
             while neg_item in self._train_dict[sgd_user]:
                 neg_item = numpy.random.randint(self._n_items)
             sgd_neg_items.append(neg_item)
-        return sgd_users, sgd_pos_items, sgd_neg_items
+        return sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items
 
     def predictions(self, user_index):
         """
@@ -206,7 +232,7 @@ class BPR(object):
         w = self.W.get_value()
         h = self.H.get_value()
         b = self.B.get_value()
-        user_vector = w[user_index,:]
+        user_vector = w[user_index, :]
         return user_vector.dot(h.T) + b
 
     def prediction(self, user_index, item_index):
@@ -216,6 +242,14 @@ class BPR(object):
         """
         return self.predictions(user_index)[item_index]
 
+    def prediction_to_dict(self):
+        rank_dict = defaultdict(dict)
+        for user in range(self._n_users):
+            rank_list = self.predictions(user)
+            for item, rank in enumerate(rank_list):
+                rank_dict[user][item] = rank
+        return rank_dict
+
     def top_predictions(self, user_index, topn=10):
         """
           Returns the item indices of the top predictions
@@ -224,8 +258,8 @@ class BPR(object):
           This won't return any of the items associated with `user_index`
           in the training set.
         """
-        return [ 
-            item_index for item_index in numpy.argsort(self.predictions(user_index)) 
+        return [
+            item_index for item_index in numpy.argsort(self.predictions(user_index))
             if item_index not in self._train_dict[user_index]
         ][::-1][:topn]
 
@@ -239,7 +273,7 @@ class BPR(object):
           that didn't appear in the training data, to allow
           for non-overlapping training and testing sets.
         """
-        test_dict, test_users, test_items = self._data_to_dict(test_data)
+        test_dict, test_users, test_items = self. (test_data)
         auc_values = []
         z = 0
         for user in test_dict.keys():
@@ -259,7 +293,8 @@ class BPR(object):
                     auc_values.append(auc_for_user)
                 z += 1
                 if z % 100 == 0 and len(auc_values) > 0:
-                    sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (str(z), numpy.mean(auc_values)))
+                    sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (
+                        str(z), numpy.mean(auc_values)))
                     sys.stderr.flush()
         sys.stderr.write("\n")
         sys.stderr.flush()

@@ -9,7 +9,7 @@ import json
 import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.cross_validation import train_test_split
+from sklearn.model_selection import train_test_split
 
 
 # 数据文件 ==========================
@@ -114,7 +114,7 @@ print('users with matches', len(
 def filter_old(frame, N=0, M=100000):
     # 筛选老用户
     def count_degree(frame):
-        degree_series = pd.concat([frame.ix[:, 1], frame.ix[:, 0]])
+        degree_series = pd.concat([frame.iloc[:, 1], frame.iloc[:, 0]])
         degree_frame = pd.DataFrame(
             degree_series.value_counts(), columns=['degree'])
         user_1 = frame.columns[0]
@@ -147,7 +147,7 @@ def iter_filter_old(frame, N=0, M=100000, step=100):
 
 
 # 输出迭代消去的数据损失量
-for i in [0, 2, 5, 3]:
+for i in [10]:
     print('least match for old user', i)
     old_match_frame = iter_filter_old(match_frame, i)
 
@@ -157,24 +157,27 @@ for i in [0, 2, 5, 3]:
 
 
 # 划分数据
-data = old_match_frame.iloc[:, :3]
+data = old_match_frame.iloc[:, :2]
 data_train, data_test = train_test_split(data, test_size=0.2, random_state=0)
+
+data_train.to_csv('input/train.csv', index=False, header=False)
+data_test.to_csv('input/test.csv', index=False, header=False)
 
 
 # 整理字典
-def frame_to_dict(frame):
-    match_dict = dict()
-    for row in frame.iterrows():
-        user_1, user_2, rate = row[1]
-        if user_1 not in match_dict:
-            match_dict[user_1] = dict()
-        if user_2 not in match_dict:
-            match_dict[user_2] = dict()
-        match_dict[user_1][user_2] = rate
-        match_dict[user_2][user_1] = rate
-    return match_dict
+# def frame_to_dict(frame):
+#     match_dict = dict()
+#     for row in frame.iterrows():
+#         user_1, user_2, rate = row[1]
+#         if user_1 not in match_dict:
+#             match_dict[user_1] = dict()
+#         if user_2 not in match_dict:
+#             match_dict[user_2] = dict()
+#         match_dict[user_1][user_2] = rate
+#         match_dict[user_2][user_1] = rate
+#     return match_dict
 
-dict_train = frame_to_dict(data_train)
-dict_test = frame_to_dict(data_test)
-save_dict(dict_train, train_file)
-save_dict(dict_test, test_file)
+# dict_train = frame_to_dict(data_train)
+# dict_test = frame_to_dict(data_test)
+# save_dict(dict_train, train_file)
+# save_dict(dict_test, test_file)

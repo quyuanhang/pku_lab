@@ -93,3 +93,4 @@ ENV/
 # my ignore
 *.json
 *.dat
+*.csv

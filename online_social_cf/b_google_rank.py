@@ -1,5 +1,7 @@
+import sys
 import json
 import collections
+import numpy
 import pandas as pd
 import datetime
 
@@ -91,21 +93,58 @@ def evaluate(recommend_dict, lable_dict, top=1000, mode='base', train_dict=0):
     elif mode == 'sum':
         return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
 
+
+def auc(train_dict, rank_dict, test_dict):
+    auc_values = []
+    z = 0
+    user_set = set(train_dict.keys()) & set(test_dict.keys())
+    for user in user_set:
+        predictions = rank_dict[user]
+        auc_for_user = 0.0
+        n = 0
+        for pos_item in test_dict[user]:
+            if pos_item in train_dict:
+                pos_rank = predictions[pos_item] if pos_item in predictions else 0
+                for neg_item in (set(train_dict.keys()) - set(test_dict.keys()) - set(train_dict[user].keys())):
+                    n += 1
+                    neg_rank = predictions[neg_item] if neg_item in predictions else 0
+                    if pos_rank > neg_rank:
+                        auc_for_user += 1
+                    elif pos_rank == neg_rank:
+                        auc_for_user += 0.5
+            if n > 0:
+                auc_for_user /= n
+                auc_values.append(auc_for_user)
+            z += 1
+            if z % 100 == 0 and len(auc_values) > 0:
+                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (str(z), numpy.mean(auc_values)))
+                sys.stderr.flush()
+    sys.stderr.write("\n")
+    sys.stderr.flush()
+    return numpy.mean(auc_values)  
+                  
+
 begin = datetime.datetime.now()
 # 评分过程
 data_train = read_file(train_file)
-neighbor = all_neighbor_dict(data_train, stage=5)
-print(datetime.datetime.now() - begin)
-prediction = recommend(neighbor, 5)
-print(datetime.datetime.now() - begin)
-
-# 测试过程
 data_test = read_file(test_file)
 
-print('标准测试')
-print(evaluate(prediction, data_test, top=5,
+neighbor = all_neighbor_dict(data_train, stage=3)
+auc(data_train, neighbor, data_test)
+print(evaluate(neighbor, data_test, top=5,
                mode='base', train_dict=data_train))
 
-print('总量测试')
-print(evaluate(prediction, data_test, top=5,
-               mode='sum', train_dict=data_train))
+
+# print(datetime.datetime.now() - begin)
+# prediction = recommend(neighbor, 5)
+# print(datetime.datetime.now() - begin)
+
+# # 测试过程
+
+# print('标准测试')
+# print(evaluate(prediction, data_test, top=5,
+#                mode='base', train_dict=data_train))
+
+# print('总量测试')
+# print(evaluate(prediction, data_test, top=5,
+#                mode='sum', train_dict=data_train))
