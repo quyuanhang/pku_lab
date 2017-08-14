@@ -212,11 +212,13 @@ class BPR(object):
         sgd_match_items, sgd_pos_items, sgd_neg_items = [], [], []
         for sgd_user in sgd_users:
             pos_item = self._train_dict[sgd_user][
-                numpy.random.randint(len(self._train_dict[sgd_user]))]
-            sgd_pos_items.append(pos_item)              
+                numpy.random.randint(len(self._train_dict[sgd_user]))]              
             if pos_item in self._train_dict:
                 if sgd_user in self._train_dict[pos_item]:
                     sgd_match_items.append(pos_item)
+                    match = True
+            if not match:
+                sgd_pos_items.append(pos_item)
             neg_item = numpy.random.randint(self._n_items)
             while neg_item in self._train_dict[sgd_user]:
                 neg_item = numpy.random.randint(self._n_items)
@@ -273,7 +275,7 @@ class BPR(object):
           that didn't appear in the training data, to allow
           for non-overlapping training and testing sets.
         """
-        test_dict, test_users, test_items = self. (test_data)
+        test_dict, test_users, test_items = self._data_to_dict(test_data)
         auc_values = []
         z = 0
         for user in test_dict.keys():
