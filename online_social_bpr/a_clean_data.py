@@ -58,7 +58,7 @@ with open(gender_file) as file:
     for row in file:
         user_id, gender = row.strip().split(',')
         gender_dict[user_id] = gender
- 
+
 print('gender dict', datetime.datetime.now() - begin)
 
 
