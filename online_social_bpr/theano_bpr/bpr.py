@@ -141,7 +141,7 @@ class BPR(object):
         obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_i * (self.H[i] ** 2).sum(
             axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
         obj_ujk = T.sum(T.log(T.nnet.sigmoid(x_ujk)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_j * (self.H[j] ** 2).sum(
-            axjs=1) - self._lambda_k * (self.H[k] ** 2).sum(axis=1) - self._lambda_bias * (self.B[j] ** 2 + self.B[k] ** 2))
+            axis=1) - self._lambda_k * (self.H[k] ** 2).sum(axis=1) - self._lambda_bias * (self.B[j] ** 2 + self.B[k] ** 2))
         cost = - obj_uij - obj_ujk
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
@@ -211,6 +211,7 @@ class BPR(object):
             len(list(self._train_users)), size=n_samples)]
         sgd_match_items, sgd_pos_items, sgd_neg_items = [], [], []
         for sgd_user in sgd_users:
+            match = False
             pos_item = self._train_dict[sgd_user][
                 numpy.random.randint(len(self._train_dict[sgd_user]))]              
             if pos_item in self._train_dict:
