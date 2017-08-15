@@ -136,7 +136,7 @@ class BPR(object):
         x_uk = T.dot(self.W[u], self.H[j].T).diagonal()
 
         x_uij = self.B[i] - self.B[j] + x_ui - x_uj
-        x_ujk = self.B[j] - self.B[k] + x_hj - x_uk
+        x_ujk = self.B[j] - self.B[k] + x_uj - x_uk
 
         obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_i * (self.H[i] ** 2).sum(
             axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
