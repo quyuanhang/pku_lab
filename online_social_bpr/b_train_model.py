@@ -13,7 +13,9 @@ import bpr
 
 with open('input/ratings.dat') as file:
     data = [row.split(',')[:2] for row in file if int(row.split(',')[2]) >= 3]
-    data = data[:1000]
+#==============================================================================
+#     data = numpy.array(data)[numpy.random.randint(len(data), size=100000)]
+#==============================================================================
     data_train, data_test = train_test_split(
         data, test_size=0.2, random_state=0)
 
@@ -24,9 +26,9 @@ testing_data, users_to_index, items_to_index = utils.load_data_from_array(
 
 bpr = bpr.BPR(10, len(users_to_index.keys()), len(users_to_index.keys()))
 
-bpr.train(training_data, epochs=50)
+bpr.train(training_data, epochs=1)
 
-# bpr.test(testing_data)
+bpr.test(testing_data)
 
 # prediction_dict_tmp = bpr.prediction_to_dict()
 
