@@ -67,8 +67,11 @@ with open(rating_file) as file:
     rating_dict = dict()
     for row in file:
         user_id, item_id, rate = row.strip().split(',')
-        user = gender_dict[user_id] + str(user_id)
-        item = gender_dict[item_id] + str(item_id)
+#==============================================================================
+#         user = gender_dict[user_id] + str(user_id)
+#         item = gender_dict[item_id] + str(item_id)
+#==============================================================================
+        user, item = user_id, item_id
         if user not in rating_dict:
             rating_dict[user] = dict()
         rating_dict[user][item] = int(rate)
@@ -86,10 +89,12 @@ for user, item_rate_dict in rating_dict.items():
     # if i % 100 == 0:
     #     print(i, datetime.datetime.now() - begin)
     #     i += 1
-    if user[0] == 'F':
-        female += 1
-    if user[0] == 'M':
-        male += 1
+#==============================================================================
+#     if user[0] == 'F':
+#         female += 1
+#     if user[0] == 'M':
+#         male += 1
+#==============================================================================
     for item, rate in item_rate_dict.items():
         if rate > 5:
             if item in rating_dict:
