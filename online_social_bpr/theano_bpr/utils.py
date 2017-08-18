@@ -80,13 +80,17 @@ def load_data_from_array(array, users_to_i = {}, items_to_i = {}):
         u = max(users_to_i.values()) + 1
     else:
         u = 0
-    for user_1, user_2 in array:
-        if user_1 not in users_to_i:
-            users_to_i[user_1] = u
+    if len(items_to_i.values()) > 0:
+        i = max(items_to_i.values()) + 1
+    else:
+        i = 0
+    for user, item, rate in array:
+        if user not in users_to_i:
+            users_to_i[user] = u
             u += 1
-        if user_2 not in users_to_i:
-            users_to_i[user_2] = u
-            u += 1
-        data.append((users_to_i[user_1], users_to_i[user_2]))
+        if item not in items_to_i:
+            items_to_i[item] = i
+            i += 1
+        data.append((users_to_i[user], items_to_i[item], rate))
     return data, users_to_i, items_to_i
 

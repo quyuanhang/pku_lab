@@ -89,7 +89,7 @@ class BPR(object):
         self._train_users = set()
         self._train_items = set()
         self._match_dict = {}
-        self._train_dict = {}
+        self._pos_dict = {}
         self._configure_theano()
         self._generate_train_model_function()
 
@@ -143,25 +143,17 @@ class BPR(object):
             axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
         obj_ujk = T.sum(T.log(T.nnet.sigmoid(x_ujk)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_j * (self.H[j] ** 2).sum(
             axis=1) - self._lambda_k * (self.H[k] ** 2).sum(axis=1) - self._lambda_bias * (self.B[j] ** 2 + self.B[k] ** 2))
-        cost_uij = - obj_uij
         cost_uijk = - obj_uij - obj_ujk
 
-        # g_cost_W = T.grad(cost=cost, wrt=self.W)
-        # g_cost_H = T.grad(cost=cost, wrt=self.H)
-        # g_cost_B = T.grad(cost=cost, wrt=self.B)
-        # self.get_g_cost_B = theano.function(inputs=[u, i, j], outputs=g_cost_B)
+        g_cost_W = T.grad(cost=cost_uijk, wrt=self.W)
+        g_cost_H = T.grad(cost=cost_uijk, wrt=self.H)
+        g_cost_B = T.grad(cost=cost_uijk, wrt=self.B)
 
-        # updates = [(self.W, self.W - self._learning_rate * g_cost_W), (self.H, self.H -
-        #                                                                self._learning_rate * g_cost_H), (self.B, self.B - self._learning_rate * g_cost_B)]
+        updates = [(self.W, self.W - self._learning_rate * g_cost_W), 
+                   (self.H, self.H - self._learning_rate * g_cost_H), 
+                   (self.B, self.B - self._learning_rate * g_cost_B)]
 
-        self.train_model_uijk = theano.function(inputs=[u, i, j, k], outputs=cost_uijk, updates=
-            [(self.W, self.W - self._learning_rate * T.grad(cost=cost_uijk, wrt=self.W)), 
-            (self.H, self.H - self._learning_rate *  T.grad(cost=cost_uijk, wrt=self.H)), 
-            (self.B, self.B - self._learning_rate *  T.grad(cost=cost_uijk, wrt=self.B))])
-        self.train_model_uij = theano.function(inputs=[u, i, j], outputs=cost_uij, updates=
-            [(self.W, self.W - self._learning_rate * T.grad(cost=cost_uij, wrt=self.W)), 
-            (self.H, self.H - self._learning_rate *  T.grad(cost=cost_uij, wrt=self.H)), 
-            (self.B, self.B - self._learning_rate *  T.grad(cost=cost_uij, wrt=self.B))])
+        self.train_model_uijk = theano.function(inputs=[u, i, j, k], outputs=cost_uijk, updates=updates)
 
     def train(self, train_data, epochs=1, batch_size=100):
         """
@@ -181,47 +173,26 @@ class BPR(object):
             sys.stderr.write(
                 "WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
             batch_size = len(train_data)
-        self._match_dict, self._train_dict, self._train_users, self._train_items = self._data_to_dict(
+        self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(
             train_data)
-        n_sgd_samples = len(self._match_dict) * epochs
+        n_sgd_samples = len(self._train_users) * epochs
         sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
             n_sgd_samples)
-#==============================================================================
-#         import pdb
-#         pdb.set_trace()
-#==============================================================================
         z = 0
-        t2 = t1 = t0 = time.time()        
-        if len(sgd_match_items) > 0:
-            train_model = self.train_model_uijk
-            while (z + 1) * batch_size < n_sgd_samples:
-                train_model(
-                    sgd_users[z * batch_size: (z + 1) * batch_size],
-                    sgd_match_items[z * batch_size: (z + 1) * batch_size], 
-                    sgd_pos_items[z * batch_size: (z + 1) * batch_size],
-                    sgd_neg_items[z * batch_size: (z + 1) * batch_size]
-                )
-                z += 1
-                t2 = time.time()
-                sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (
-                    str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
-                sys.stderr.flush()
-
-        else:
-            train_model = self.train_model_uij
-            while (z + 1) * batch_size < n_sgd_samples:
-                train_model(
-                    sgd_users[z * batch_size: (z + 1) * batch_size],
-                    sgd_pos_items[z * batch_size: (z + 1) * batch_size],
-                    sgd_neg_items[z * batch_size: (z + 1) * batch_size]
-                )
-                z += 1
-                t2 = time.time()
-                sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (
-                    str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
-                sys.stderr.flush()
-
-
+        t2 = t1 = t0 = time.time()
+        train_model = self.train_model_uijk
+        while (z + 1) * batch_size < n_sgd_samples:
+            train_model(
+                sgd_users[z * batch_size: (z + 1) * batch_size],
+                sgd_match_items[z * batch_size: (z + 1) * batch_size],
+                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
+                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
+            )
+            z += 1
+            t2 = time.time()
+            sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (
+                str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
+            sys.stderr.flush()
         if n_sgd_samples > 0:
             sys.stderr.write("\nTotal training time %.2f seconds; %e per sample\n" % (
                 t2 - t0, (t2 - t0) / n_sgd_samples))
@@ -236,16 +207,16 @@ class BPR(object):
         """
         sys.stderr.write(
             "Generating %s random training samples\n" % str(n_samples))
-        sgd_users = numpy.array(list(self._match_dict.keys()))[numpy.random.randint(
-            len(self._match_dict), size=n_samples)]
+        sgd_users = numpy.array(list(self._train_users))[numpy.random.randint(
+            len(self._train_users), size=n_samples)]
         sgd_match_items, sgd_pos_items, sgd_neg_items = [], [], []
         for sgd_user in sgd_users:
-            pos_item = self._train_dict[sgd_user][
-                numpy.random.randint(len(self._train_dict[sgd_user]))]     
+            pos_item = self._pos_dict[sgd_user][
+                numpy.random.randint(len(self._pos_dict[sgd_user]))]
             match_item = self._match_dict[sgd_user][
                 numpy.random.randint(len(self._match_dict[sgd_user]))]
             neg_item = numpy.random.randint(self._n_items)
-            while neg_item in self._train_dict[sgd_user]:
+            while neg_item in self._pos_dict[sgd_user]:
                 neg_item = numpy.random.randint(self._n_items)
             sgd_match_items.append(match_item)
             sgd_pos_items.append(pos_item)
@@ -289,7 +260,7 @@ class BPR(object):
         """
         return [
             item_index for item_index in numpy.argsort(self.predictions(user_index))
-            if item_index not in self._train_dict[user_index]
+            if item_index not in self._pos_dict[user_index]
         ][::-1][:topn]
 
     def test(self, test_data):
@@ -302,51 +273,59 @@ class BPR(object):
           that didn't appear in the training data, to allow
           for non-overlapping training and testing sets.
         """
-        match_dict, test_dict, test_users, test_items = self._data_to_dict(test_data)
+        test_match_dict, test_pos_dict, test_users, test_items = self._data_to_dict(
+            test_data)
         auc_values = []
         z = 0
-        for user in test_dict.keys():
-            if user in self._train_users:
-                auc_for_user = 0.0
-                n = 0
-                predictions = self.predictions(user)
-                pos_items = set(test_dict[user]) & self._train_items - set(self._train_dict[user])
-                neg_items = self._train_items - pos_items - set(self._train_dict[user])
-                for pos_item in pos_items:
-                    for neg_item in neg_items:
-                        n += 1
-                        if predictions[pos_item] > predictions[neg_item]:
-                            auc_for_user += 1
-                if n > 0:
-                    auc_for_user /= n
-                    auc_values.append(auc_for_user)
-                z += 1
-                if z % 100 == 0 and len(auc_values) > 0:
-                    sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (
-                        str(z), numpy.mean(auc_values)))
-                    sys.stderr.flush()
+        for user in test_users & self._train_users:
+            auc_for_user = 0.0
+            n = 0
+            predictions = self.predictions(user)
+            match_items = set(
+                test_match_dict[user]) & self._train_items - set(self._match_dict[user])
+            pos_items = set(
+                test_pos_dict[user]) & self._train_items - set(self._pos_dict[user])
+            neg_items = self._train_items - match_items - pos_items - \
+                set(self._pos_dict[user]) - set(self._match_dict[user])
+            for match_item in match_items:
+                for other_item in pos_items | neg_items:
+                    n += 1
+                    if predictions[match_item] > predictions[other_item]:
+                        auc_for_user += 1
+                    elif predictions[match_item] == predictions[other_item]:
+                        auc_for_user += 0.5
+            for pos_item in pos_items:
+                for neg_item in neg_items:
+                    n += 1
+                    if predictions[pos_item] > predictions[neg_item]:
+                        auc_for_user += 1
+                    elif predictions[pos_item] == predictions[neg_item]:
+                        auc_for_user += 0.5
+            if n > 0:
+                auc_for_user /= n
+                auc_values.append(auc_for_user)
+            z += 1
+            if z % 100 == 0 and len(auc_values) > 0:
+                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (
+                    str(z), numpy.mean(auc_values)))
+                sys.stderr.flush()
         sys.stderr.write("\n")
         sys.stderr.flush()
         return numpy.mean(auc_values)
 
     def _data_to_dict(self, data):
-        data_dict_tmp = defaultdict(set)
+        pos_dict = dict()
+        match_dict = dict()
         all_items = set()
-        for (user, item) in data:
-            data_dict_tmp[user].add(item)
+        for (user, item, rate) in data:
+            if rate == 2:
+                if user not in match_dict:
+                    match_dict[user] = list()
+                match_dict[user].append(item)
+            if rate == 1:
+                if user not in pos_dict:
+                    pos_dict[user] = list()
+                pos_dict[user].append(item)
             all_items.add(item)
 
-        match_dict = defaultdict(list)
-        for user, items in data_dict_tmp.items():
-            for item in items:
-                if item in data_dict_tmp:
-                    if user in data_dict_tmp[item]:
-                        match_dict[user].append(item)
-                        match_dict[item].append(user)
-
-        data_dict = dict()
-        for user in match_dict:
-            data_dict[user] = list(data_dict_tmp[user] - set(match_dict[user]))
-        print(len(match_dict))
-
-        return match_dict, data_dict, set(data_dict.keys()), all_items
+        return match_dict, pos_dict, (set(match_dict.keys()) & set(pos_dict.keys())), all_items

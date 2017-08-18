@@ -192,11 +192,18 @@ i = 0
 for user in old_user_set:
     items = male_rating_dict[user]
     for item in items:
+        # 只保留活跃物品
         if item in old_item_set:
             if item in male_match_dict[user]:
                 positive_data.append([user, item, 2])
             else:
                 positive_data.append([user, item, 1])
+        # 保留全部物品
+        # if item in male_match_dict[user]:
+        #     positive_data.append([user, item, 2])
+        # else:
+        #     positive_data.append([user, item, 1])
+
     print_schedule(begin, i, 'combine match and positive users')
     i += 1
 complete_schedual()

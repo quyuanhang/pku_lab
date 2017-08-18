@@ -24,11 +24,9 @@ testing_data, users_to_index, items_to_index = utils.load_data_from_array(
 
 bpr = bpr.BPR(10, len(users_to_index.keys()), len(users_to_index.keys()))
 
-bpr.train(training_data, epochs=1)
+bpr.train(training_data, epochs=10)
 
-#==============================================================================
-# bpr.test(testing_data)
-#==============================================================================
+bpr.test(testing_data)
 
 # prediction_dict_tmp = bpr.prediction_to_dict()
 
