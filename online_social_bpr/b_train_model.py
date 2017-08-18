@@ -7,7 +7,7 @@ Created on Fri Aug 11 19:29:08 2017
 
 # 內建库
 import sys
-sys.path.append('theano_bpr/')
+sys.path.append('classic_bpr/')
 # 第三方库
 import pandas as pd
 # 本地库
