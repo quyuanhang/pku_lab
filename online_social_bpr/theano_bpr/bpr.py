@@ -149,11 +149,12 @@ class BPR(object):
         g_cost_H = T.grad(cost=cost_uijk, wrt=self.H)
         g_cost_B = T.grad(cost=cost_uijk, wrt=self.B)
 
-        updates = [(self.W, self.W - self._learning_rate * g_cost_W), 
-                   (self.H, self.H - self._learning_rate * g_cost_H), 
+        updates = [(self.W, self.W - self._learning_rate * g_cost_W),
+                   (self.H, self.H - self._learning_rate * g_cost_H),
                    (self.B, self.B - self._learning_rate * g_cost_B)]
 
-        self.train_model_uijk = theano.function(inputs=[u, i, j, k], outputs=cost_uijk, updates=updates)
+        self.train_model_uijk = theano.function(
+            inputs=[u, i, j, k], outputs=cost_uijk, updates=updates)
 
     def train(self, train_data, epochs=1, batch_size=100):
         """
@@ -182,12 +183,17 @@ class BPR(object):
         t2 = t1 = t0 = time.time()
         train_model = self.train_model_uijk
         while (z + 1) * batch_size < n_sgd_samples:
-            train_model(
-                sgd_users[z * batch_size: (z + 1) * batch_size],
-                sgd_match_items[z * batch_size: (z + 1) * batch_size],
-                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
-                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
-            )
+            try:
+                train_model(
+                    sgd_users[z * batch_size: (z + 1) * batch_size],
+                    sgd_match_items[z * batch_size: (z + 1) * batch_size],
+                    sgd_pos_items[z * batch_size: (z + 1) * batch_size],
+                    sgd_neg_items[z * batch_size: (z + 1) * batch_size]
+                )
+            except:
+                import pdb
+                pdb.set_trace()
+
             z += 1
             t2 = time.time()
             sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (

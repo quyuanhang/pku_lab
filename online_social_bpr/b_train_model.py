@@ -22,9 +22,9 @@ training_data, users_to_index, items_to_index = utils.load_data_from_array(
 testing_data, users_to_index, items_to_index = utils.load_data_from_array(
     data_test, users_to_index, items_to_index)
 
-bpr = bpr.BPR(10, len(users_to_index.keys()), len(users_to_index.keys()))
+bpr = bpr.BPR(10, len(users_to_index), len(items_to_index))
 
-bpr.train(training_data, epochs=10)
+bpr.train(training_data, epochs=1000)
 
 bpr.test(testing_data)
 
