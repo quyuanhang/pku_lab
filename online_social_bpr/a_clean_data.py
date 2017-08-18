@@ -37,7 +37,9 @@ def save_dict(obj, file_dir):
     f.close()
 
 
-def print_schedule(s_, i, begin):
+def print_schedule(begin, i, s_=None):
+    if not s_:
+        return 0
     if i % 1000 == 0:
         sum_time = '%2f' % (time.time() - begin)
         sys.stderr.write(("\r%s %d sum time %s" % (s_, i, sum_time)))
@@ -49,6 +51,9 @@ def complete_schedual():
     sys.stderr.flush()
 
 
+sys.stderr.write("\rruning\n")
+sys.stderr.flush()
+
 begin = time.time()
 
 # 性别字典
@@ -58,7 +63,7 @@ with open(gender_file) as file:
         user_id, gender = row.strip().split(',')
         gender_dict[user_id] = gender
 
-print('gender dict', time.time() - begin)
+print('\rgender dict', time.time() - begin)
 
 
 # 读取评分文件 构造字典
@@ -73,16 +78,20 @@ with open(rating_file) as file:
             user = gender_dict[user_id] + str(user_id)
             item = gender_dict[item_id] + str(item_id)
             if user[0] == 'M' and item[0] == 'F':
+                # if user[0] == 'M':
                 if user not in male_rating_dict:
                     male_rating_dict[user] = dict()
                 male_rating_dict[user][item] = rate
             elif user[0] == 'F' and item[0] == 'M':
+                # elif user[0] == 'F':
                 if user not in famale_rating_dict:
                     famale_rating_dict[user] = dict()
                 famale_rating_dict[user][item] = rate
-        print_schedule('reading record', i, begin)
+            # else:
+            #     print(user, item)
+        print_schedule(begin, i, 'reading rating file')
         i += 1
-        # if i > 10000:
+        # if i > 500000:
         #     break
     complete_schedual()
 
@@ -107,7 +116,7 @@ for user, item_rate_dict in male_rating_dict.items():
                             match_dict[user] = dict()
                         match_dict[user][item] = rate * rate_
                         match_list.append([user, item, rate * rate_])
-    print_schedule('reading record', i, begin)
+    print_schedule(begin, i, 'reading male dict')
     i += 1
 complete_schedual()
 
@@ -123,10 +132,11 @@ def filter_old(frame, N=0, M=100000):
         try:
             user = frame.columns[col]
         except:
-            print(frame)
-        user_degree_series = frame.loc[:, user]
-        user_degree_frame = pd.DataFrame(
-            user_degree_series.value_counts(), columns=['degree'])
+            import pdb
+            pdb.set_trace()
+        user_degree_series = frame.iloc[:, col]
+        user_degree_frame = pd.DataFrame(user_degree_series.value_counts())
+        user_degree_frame.columns = ['degree']
         user_degree_frame = pd.merge(frame, user_degree_frame,
                                      left_on=user, right_index=True)
         return user_degree_frame
@@ -139,7 +149,7 @@ def filter_old(frame, N=0, M=100000):
     #                  len(set(old_frame.iloc[:, 0]) & set(old_frame.iloc[:, 1]))), 'users')
     # print('delete', (len(frame) - len(old_frame)), 'matches')
     old_frame = count_degree(old_frame.iloc[:, :3], 0)
-    old_frame = count_degree(old_frame.iloc, 1)
+    old_frame = count_degree(old_frame, 1)
     return old_frame
 
 
@@ -149,20 +159,18 @@ def iter_filter_old(frame, N=0, M=100000, step=100):
         if (frame['degree_x'].min() >= N and
                 frame['degree_y'].min() >= N):
             break
-    print('rest users', len(set(frame.iloc[:, 0]) | set(frame.iloc[:, 1])))
+    print('rest users', len(set(frame.iloc[:, 0])))
+    print('rest items', len(set(frame.iloc[:, 1])))
     print('rest matches', len(frame))
-    return frame
+    return frame.iloc[:, :3]
 
 
 # 输出迭代消去的数据损失量
-for i in [3]:
+for i in [0, 1, 2, 3]:
     print('least match for old user', i)
     old_match_frame = iter_filter_old(match_frame, i)
     old_user_set = set(old_match_frame['user'])
     old_item_set = set(old_match_frame['item'])
-    print('rest user', len(old_user_set),
-          'rest item', len(),
-          'rest matches', len(set(old_match_frame)))
 
 # 根据匹配记录生成字典
 
@@ -189,7 +197,7 @@ for user in old_user_set:
                 positive_data.append([user, item, 2])
             else:
                 positive_data.append([user, item, 1])
-    print_schedule('combine match and positive users', i, begin)
+    print_schedule(begin, i, 'combine match and positive users')
     i += 1
 complete_schedual()
 
