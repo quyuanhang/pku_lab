@@ -14,8 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import theano
-import numpy
+import theano, numpy
 import theano.tensor as T
 import time
 import sys
@@ -24,7 +23,7 @@ from collections import defaultdict
 
 class BPR(object):
 
-    def __init__(self, rank, n_users, n_items, lambda_u=0.0025, lambda_i=0.0025, lambda_j=0.00025, lambda_k=0.00025, lambda_bias=0.0, learning_rate=0.05):
+    def __init__(self, rank, n_users, n_items, match_weight=2, lambda_u=0.0025, lambda_i=0.0025, lambda_j=0.00025, lambda_bias=0.0, learning_rate=0.05):
         """
           Creates a new object for training and testing a Bayesian
           Personalised Ranking (BPR) Matrix Factorisation 
@@ -78,12 +77,12 @@ class BPR(object):
           testing set are chosen at random)
         """
         self._rank = rank
+        self._match_weight = match_weight
         self._n_users = n_users
         self._n_items = n_items
         self._lambda_u = lambda_u
         self._lambda_i = lambda_i
         self._lambda_j = lambda_j
-        self._lambda_k = lambda_k
         self._lambda_bias = lambda_bias
         self._learning_rate = learning_rate
         self._train_users = set()
@@ -122,39 +121,28 @@ class BPR(object):
         u = T.lvector('u')
         i = T.lvector('i')
         j = T.lvector('j')
-        k = T.lvector('k')
 
-        self.W = theano.shared(numpy.random.random(
-            (self._n_users, self._rank)).astype('float32'), name='W')
-        self.H = theano.shared(numpy.random.random(
-            (self._n_items, self._rank)).astype('float32'), name='H')
+        self.W = theano.shared(numpy.random.random((self._n_users, self._rank)).astype('float32'), name='W')
+        self.H = theano.shared(numpy.random.random((self._n_items, self._rank)).astype('float32'), name='H')
 
-        self.B = theano.shared(numpy.zeros(
-            self._n_items).astype('float32'), name='B')
+        self.B = theano.shared(numpy.zeros(self._n_items).astype('float32'), name='B')
 
         x_ui = T.dot(self.W[u], self.H[i].T).diagonal()
         x_uj = T.dot(self.W[u], self.H[j].T).diagonal()
-        x_uk = T.dot(self.W[u], self.H[j].T).diagonal()
 
         x_uij = self.B[i] - self.B[j] + x_ui - x_uj
-        x_ujk = self.B[j] - self.B[k] + x_uj - x_uk
 
         obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_i * (self.H[i] ** 2).sum(
             axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
-        obj_ujk = T.sum(T.log(T.nnet.sigmoid(x_ujk)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_j * (self.H[j] ** 2).sum(
-            axis=1) - self._lambda_k * (self.H[k] ** 2).sum(axis=1) - self._lambda_bias * (self.B[j] ** 2 + self.B[k] ** 2))
-        cost_uijk = - obj_uij - obj_ujk
+        cost = - obj_uij
 
-        g_cost_W = T.grad(cost=cost_uijk, wrt=self.W)
-        g_cost_H = T.grad(cost=cost_uijk, wrt=self.H)
-        g_cost_B = T.grad(cost=cost_uijk, wrt=self.B)
+        g_cost_W = T.grad(cost=cost, wrt=self.W)
+        g_cost_H = T.grad(cost=cost, wrt=self.H)
+        g_cost_B = T.grad(cost=cost, wrt=self.B)
 
-        updates = [(self.W, self.W - self._learning_rate * g_cost_W),
-                   (self.H, self.H - self._learning_rate * g_cost_H),
-                   (self.B, self.B - self._learning_rate * g_cost_B)]
+        updates = [ (self.W, self.W - self._learning_rate * g_cost_W), (self.H, self.H - self._learning_rate * g_cost_H), (self.B, self.B - self._learning_rate * g_cost_B) ]
 
-        self.train_model_uijk = theano.function(
-            inputs=[u, i, j, k], outputs=cost_uijk, updates=updates)
+        self.train_model = theano.function(inputs=[u, i, j], outputs=cost, updates=updates)
 
     def train(self, train_data, epochs=1, batch_size=100):
         """
@@ -171,29 +159,19 @@ class BPR(object):
           descent for the batch.
         """
         if len(train_data) < batch_size:
-            sys.stderr.write(
-                "WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
+            sys.stderr.write("WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
             batch_size = len(train_data)
-        self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(
-            train_data)
+        self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(train_data)
         n_sgd_samples = len(self._train_users) * epochs
-        sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
-            n_sgd_samples)
+        sgd_users, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(n_sgd_samples)
         z = 0
         t2 = t1 = t0 = time.time()
-        train_model = self.train_model_uijk
         while (z + 1) * batch_size < n_sgd_samples:
-            try:
-                train_model(
-                    sgd_users[z * batch_size: (z + 1) * batch_size],
-                    sgd_match_items[z * batch_size: (z + 1) * batch_size],
-                    sgd_pos_items[z * batch_size: (z + 1) * batch_size],
-                    sgd_neg_items[z * batch_size: (z + 1) * batch_size]
-                )
-            except:
-                import pdb
-                pdb.set_trace()
-
+            self.train_model(
+                sgd_users[z*batch_size: (z+1)*batch_size],
+                sgd_pos_items[z*batch_size: (z+1)*batch_size],
+                sgd_neg_items[z*batch_size: (z+1)*batch_size]
+            )
             z += 1
             t2 = time.time()
             sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (
@@ -211,23 +189,24 @@ class BPR(object):
           and then sample a positive and a negative item for each 
           user sample.
         """
-        sys.stderr.write(
-            "Generating %s random training samples\n" % str(n_samples))
-        sgd_users = numpy.array(list(self._train_users))[numpy.random.randint(
-            len(self._train_users), size=n_samples)]
-        sgd_match_items, sgd_pos_items, sgd_neg_items = [], [], []
+        sys.stderr.write("Generating %s random training samples\n" % str(n_samples))
+        sgd_users = numpy.array(list(self._train_users))[numpy.random.randint(len(self._train_users), size=n_samples)]
+        sgd_pos_items, sgd_neg_items = [], []
         for sgd_user in sgd_users:
             pos_item = self._pos_dict[sgd_user][
                 numpy.random.randint(len(self._pos_dict[sgd_user]))]
             match_item = self._match_dict[sgd_user][
                 numpy.random.randint(len(self._match_dict[sgd_user]))]
             neg_item = numpy.random.randint(self._n_items)
-            while neg_item in self._pos_dict[sgd_user]:
+            while neg_item in set(self._pos_dict[sgd_user]) & set(self._match_dict[sgd_user]):
                 neg_item = numpy.random.randint(self._n_items)
-            sgd_match_items.append(match_item)
-            sgd_pos_items.append(pos_item)
-            sgd_neg_items.append(neg_item)
-        return sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items
+            if numpy.random.random() < (len(self._match_dict[sgd_user]) / len(self._pos_dict[sgd_user]) * self._match_weight):
+                sgd_pos_items.append(match_item)
+                sgd_neg_items.append(neg_item)
+            else:
+                sgd_pos_items.append(pos_item)
+                sgd_neg_items.append(neg_item)
+        return sgd_users, sgd_pos_items, sgd_neg_items
 
     def predictions(self, user_index):
         """
