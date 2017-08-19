@@ -24,7 +24,7 @@ from collections import defaultdict
 
 class BPR(object):
 
-    def __init__(self, rank, n_users, n_items, match_weight=2, lambda_u=0.0025, lambda_i=0.0025, lambda_j=0.00025, lambda_bias=0.0, learning_rate=0.05):
+    def __init__(self, rank, n_users, n_items, match_weight=2, lambda_u=0.0025, lambda_i=0.0025, lambda_j=0.0025, lambda_bias=0.0, learning_rate=0.05):
         """
           Creates a new object for training and testing a Bayesian
           Personalised Ranking (BPR) Matrix Factorisation 
@@ -217,7 +217,7 @@ class BPR(object):
                 neg_item = numpy.random.randint(self._n_items)
             if numpy.random.random() < (len(self._match_dict[sgd_user]) / len(self._pos_dict[sgd_user]) * self._match_weight):
                 sgd_pos_items.append(match_item)
-                sgd_neg_items.append(neg_item)
+                sgd_neg_items.append(pos_item)
             else:
                 sgd_pos_items.append(pos_item)
                 sgd_neg_items.append(neg_item)
@@ -317,7 +317,7 @@ class BPR(object):
                 auc_pos /= n_pos
                 auc_pos_values.append(auc_pos)
             z += 1
-            if z % 100 == 0 and len(auc_values) > 0:
+            if z % 10 == 0 and len(auc_values) > 0:
                 sys.stderr.write("\rCurrent AUC mean (%s samples): %0.3f, %0.3f, %0.3f" % (
                     str(z), numpy.mean(auc_values), numpy.mean(auc_match_values), numpy.mean(auc_pos_values)))
                 sys.stderr.flush()
