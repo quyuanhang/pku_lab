@@ -14,7 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import theano, numpy
+import theano
+import numpy
 import theano.tensor as T
 import time
 import sys
@@ -122,27 +123,36 @@ class BPR(object):
         i = T.lvector('i')
         j = T.lvector('j')
 
-        self.W = theano.shared(numpy.random.random((self._n_users, self._rank)).astype('float32'), name='W')
-        self.H = theano.shared(numpy.random.random((self._n_items, self._rank)).astype('float32'), name='H')
+        self.W = theano.shared(numpy.random.random(
+            (self._n_users, self._rank)).astype('float32'), name='W')
+        self.H = theano.shared(numpy.random.random(
+            (self._n_items, self._rank)).astype('float32'), name='H')
 
-        self.B = theano.shared(numpy.zeros(self._n_items).astype('float32'), name='B')
+        self.B = theano.shared(numpy.zeros(
+            self._n_items).astype('float32'), name='B')
 
-        x_ui = T.dot(self.W[u], self.H[i].T).diagonal()
-        x_uj = T.dot(self.W[u], self.H[j].T).diagonal()
+        x_ui = T.dot(self.W[u], self.H[i].T).diagonal() + self.B[i]
+        x_uj = T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j]
 
-        x_uij = self.B[i] - self.B[j] + x_ui - x_uj
+        x_uij = x_ui - x_uj
 
-        obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) - self._lambda_u * (self.W[u] ** 2).sum(axis=1) - self._lambda_i * (self.H[i] ** 2).sum(
-            axis=1) - self._lambda_j * (self.H[j] ** 2).sum(axis=1) - self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
+        obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) -
+                        self._lambda_u * (self.W[u] ** 2).sum(axis=1) -
+                        self._lambda_i * (self.H[i] ** 2).sum(axis=1) -
+                        self._lambda_j * (self.H[j] ** 2).sum(axis=1) -
+                        self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
         cost = - obj_uij
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
         g_cost_B = T.grad(cost=cost, wrt=self.B)
 
-        updates = [ (self.W, self.W - self._learning_rate * g_cost_W), (self.H, self.H - self._learning_rate * g_cost_H), (self.B, self.B - self._learning_rate * g_cost_B) ]
+        updates = [(self.W, self.W - self._learning_rate * g_cost_W),
+                   (self.H, self.H - self._learning_rate * g_cost_H),
+                   (self.B, self.B - self._learning_rate * g_cost_B)]
 
-        self.train_model = theano.function(inputs=[u, i, j], outputs=cost, updates=updates)
+        self.train_model = theano.function(
+            inputs=[u, i, j], outputs=cost, updates=updates)
 
     def train(self, train_data, epochs=1, batch_size=100):
         """
@@ -159,18 +169,21 @@ class BPR(object):
           descent for the batch.
         """
         if len(train_data) < batch_size:
-            sys.stderr.write("WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
+            sys.stderr.write(
+                "WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
             batch_size = len(train_data)
-        self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(train_data)
+        self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(
+            train_data)
         n_sgd_samples = len(self._train_users) * epochs
-        sgd_users, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(n_sgd_samples)
+        sgd_users, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
+            n_sgd_samples)
         z = 0
         t2 = t1 = t0 = time.time()
         while (z + 1) * batch_size < n_sgd_samples:
             self.train_model(
-                sgd_users[z*batch_size: (z+1)*batch_size],
-                sgd_pos_items[z*batch_size: (z+1)*batch_size],
-                sgd_neg_items[z*batch_size: (z+1)*batch_size]
+                sgd_users[z * batch_size: (z + 1) * batch_size],
+                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
+                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
             )
             z += 1
             t2 = time.time()
@@ -189,8 +202,10 @@ class BPR(object):
           and then sample a positive and a negative item for each 
           user sample.
         """
-        sys.stderr.write("Generating %s random training samples\n" % str(n_samples))
-        sgd_users = numpy.array(list(self._train_users))[numpy.random.randint(len(self._train_users), size=n_samples)]
+        sys.stderr.write(
+            "Generating %s random training samples\n" % str(n_samples))
+        sgd_users = numpy.array(list(self._train_users))[
+            numpy.random.randint(len(self._train_users), size=n_samples)]
         sgd_pos_items, sgd_neg_items = [], []
         for sgd_user in sgd_users:
             pos_item = self._pos_dict[sgd_user][
@@ -198,7 +213,7 @@ class BPR(object):
             match_item = self._match_dict[sgd_user][
                 numpy.random.randint(len(self._match_dict[sgd_user]))]
             neg_item = numpy.random.randint(self._n_items)
-            while neg_item in set(self._pos_dict[sgd_user]) & set(self._match_dict[sgd_user]):
+            while neg_item in set(self._pos_dict[sgd_user]) | set(self._match_dict[sgd_user]):
                 neg_item = numpy.random.randint(self._n_items)
             if numpy.random.random() < (len(self._match_dict[sgd_user]) / len(self._pos_dict[sgd_user]) * self._match_weight):
                 sgd_pos_items.append(match_item)
@@ -260,11 +275,11 @@ class BPR(object):
         """
         test_match_dict, test_pos_dict, test_users, test_items = self._data_to_dict(
             test_data)
-        auc_values = []
+        auc_values, auc_match_values, auc_pos_values = [], [], []
         z = 0
         for user in test_users & self._train_users:
-            auc_for_user = 0.0
-            n = 0
+            auc_for_user, auc_match, auc_pos = 0.0, 0.0, 0.0
+            n, n_match, n_pos = 0, 0, 0
             predictions = self.predictions(user)
             match_items = set(
                 test_match_dict[user]) & self._train_items - set(self._match_dict[user])
@@ -275,24 +290,36 @@ class BPR(object):
             for match_item in match_items:
                 for other_item in pos_items | neg_items:
                     n += 1
+                    n_match += 1
                     if predictions[match_item] > predictions[other_item]:
                         auc_for_user += 1
+                        auc_match += 1
                     elif predictions[match_item] == predictions[other_item]:
                         auc_for_user += 0.5
+                        auc_match += 0.5
             for pos_item in pos_items:
                 for neg_item in neg_items:
                     n += 1
+                    n_pos += 1
                     if predictions[pos_item] > predictions[neg_item]:
                         auc_for_user += 1
+                        auc_pos += 1
                     elif predictions[pos_item] == predictions[neg_item]:
                         auc_for_user += 0.5
+                        auc_pos += 0.5
             if n > 0:
                 auc_for_user /= n
                 auc_values.append(auc_for_user)
+            if n_match > 0:
+                auc_match /= n_match
+                auc_match_values.append(auc_match)
+            if n_pos > 0:
+                auc_pos /= n_pos
+                auc_pos_values.append(auc_pos)
             z += 1
             if z % 100 == 0 and len(auc_values) > 0:
-                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (
-                    str(z), numpy.mean(auc_values)))
+                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.3f, %0.3f, %0.3f" % (
+                    str(z), numpy.mean(auc_values), numpy.mean(auc_match_values), numpy.mean(auc_pos_values)))
                 sys.stderr.flush()
         sys.stderr.write("\n")
         sys.stderr.flush()

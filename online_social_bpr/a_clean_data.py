@@ -41,7 +41,7 @@ def print_schedule(begin, i, s_=None):
     if not s_:
         return 0
     if i % 1000 == 0:
-        sum_time = '%2f' % (time.time() - begin)
+        sum_time = '%0.2f' % (time.time() - begin)
         sys.stderr.write(("\r%s %d sum time %s" % (s_, i, sum_time)))
         sys.stderr.flush()
 
@@ -63,11 +63,12 @@ with open(gender_file) as file:
         user_id, gender = row.strip().split(',')
         gender_dict[user_id] = gender
 
-print('\rgender dict', time.time() - begin)
-
+print('gender dict', time.time() - begin)
+sys.stderr.flush()
 
 # 读取评分文件 构造字典
 with open(rating_file) as file:
+    male_rating = 0
     male_rating_dict = dict()
     famale_rating_dict = dict()
     i = 0
@@ -78,6 +79,7 @@ with open(rating_file) as file:
             user = gender_dict[user_id] + str(user_id)
             item = gender_dict[item_id] + str(item_id)
             if user[0] == 'M' and item[0] == 'F':
+                male_rating += 1
                 # if user[0] == 'M':
                 if user not in male_rating_dict:
                     male_rating_dict[user] = dict()
@@ -94,6 +96,7 @@ with open(rating_file) as file:
         # if i > 500000:
         #     break
     complete_schedual()
+    print('\n', len(male_rating_dict), 'male rating', male_rating, 'female')
 
 
 print('rating dict', time.time() - begin)
@@ -193,20 +196,21 @@ for user in old_user_set:
     items = male_rating_dict[user]
     for item in items:
         # 只保留活跃物品
-        if item in old_item_set:
-            if item in male_match_dict[user]:
-                positive_data.append([user, item, 2])
-            else:
-                positive_data.append([user, item, 1])
+        # if item in old_item_set:
+        #     if item in male_match_dict[user]:
+        #         positive_data.append([user, item, 2])
+        #     else:
+        #         positive_data.append([user, item, 1])
         # 保留全部物品
-        # if item in male_match_dict[user]:
-        #     positive_data.append([user, item, 2])
-        # else:
-        #     positive_data.append([user, item, 1])
+        if item in male_match_dict[user]:
+            positive_data.append([user, item, 2])
+        else:
+            positive_data.append([user, item, 1])
 
     print_schedule(begin, i, 'combine match and positive users')
     i += 1
 complete_schedual()
+print('user positive num', len(positive_data))
 
 
 # 划分数据
