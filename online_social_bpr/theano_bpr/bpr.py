@@ -17,6 +17,7 @@
 import theano
 import numpy
 import theano.tensor as T
+import theano_lstm
 import time
 import sys
 from collections import defaultdict
@@ -24,7 +25,7 @@ from collections import defaultdict
 
 class BPR(object):
 
-    def __init__(self, rank, n_users, n_items, match_weight=2, lambda_u=0.0025, lambda_i=0.0025, lambda_j=0.0025, lambda_bias=0.0, learning_rate=0.05):
+    def __init__(self, rank, n_users, n_items, match_weight=2, lambda_u=0.01, lambda_i=0.01, lambda_j=0.01, lambda_bias=0.0, learning_rate=0.1, sgd_weight=0.8):
         """
           Creates a new object for training and testing a Bayesian
           Personalised Ranking (BPR) Matrix Factorisation 
@@ -86,6 +87,7 @@ class BPR(object):
         self._lambda_j = lambda_j
         self._lambda_bias = lambda_bias
         self._learning_rate = learning_rate
+        self._sgd_weight = sgd_weight
         self._train_users = set()
         self._train_items = set()
         self._match_dict = {}
@@ -146,13 +148,16 @@ class BPR(object):
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
         g_cost_B = T.grad(cost=cost, wrt=self.B)
+        sgd_updates = [(self.W, self.W - self._learning_rate * g_cost_W),
+                       (self.H, self.H - self._learning_rate * g_cost_H),
+                       (self.B, self.B - self._learning_rate * g_cost_B)]
+        self.train_sgd = theano.function(
+            inputs=[u, i, j], outputs=cost, updates=sgd_updates)
 
-        updates = [(self.W, self.W - self._learning_rate * g_cost_W),
-                   (self.H, self.H - self._learning_rate * g_cost_H),
-                   (self.B, self.B - self._learning_rate * g_cost_B)]
-
-        self.train_model = theano.function(
-            inputs=[u, i, j], outputs=cost, updates=updates)
+        ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
+            cost, [self.W, self.H, self.B], method="adadelta")
+        self.train_ada = theano.function(
+            inputs=[u, i, j], outputs=cost, updates=ada_updates)
 
     def train(self, train_data, epochs=1, batch_size=100):
         """
@@ -179,17 +184,30 @@ class BPR(object):
             n_sgd_samples)
         z = 0
         t2 = t1 = t0 = time.time()
-        while (z + 1) * batch_size < n_sgd_samples:
-            self.train_model(
+        while (z + 1) * batch_size < n_sgd_samples * (self._sgd_weight):
+            self.train_sgd(
                 sgd_users[z * batch_size: (z + 1) * batch_size],
                 sgd_pos_items[z * batch_size: (z + 1) * batch_size],
                 sgd_neg_items[z * batch_size: (z + 1) * batch_size]
             )
             z += 1
             t2 = time.time()
-            sys.stderr.write("\rProcessed %s ( %.2f%% ) in %.4f seconds" % (
+            sys.stderr.write("\rsgd Processed %s ( %.2f%% ) in %.4f seconds" % (
                 str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
             sys.stderr.flush()
+
+        while (z + 1) * batch_size < n_sgd_samples:
+            self.train_ada(
+                sgd_users[z * batch_size: (z + 1) * batch_size],
+                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
+                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
+            )
+            z += 1
+            t2 = time.time()
+            sys.stderr.write("\rada Processed %s ( %.2f%% ) in %.4f seconds" % (
+                str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
+            sys.stderr.flush()
+
         if n_sgd_samples > 0:
             sys.stderr.write("\nTotal training time %.2f seconds; %e per sample\n" % (
                 t2 - t0, (t2 - t0) / n_sgd_samples))
