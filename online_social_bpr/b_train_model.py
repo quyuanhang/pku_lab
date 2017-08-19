@@ -22,8 +22,8 @@ training_data, users_to_index, items_to_index = utils.load_data_from_array(
 testing_data, users_to_index, items_to_index = utils.load_data_from_array(
     data_test, users_to_index, items_to_index)
 
-bpr = bpr.BPR(rank=10, n_users=len(users_to_index),
-              n_items=len(items_to_index), match_weight=2)
+bpr = bpr.BPR(rank=50, n_users=len(users_to_index),
+              n_items=len(items_to_index), match_weight=1)
 
 bpr.train(training_data, epochs=1000)
 
