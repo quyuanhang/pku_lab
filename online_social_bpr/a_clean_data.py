@@ -125,7 +125,7 @@ complete_schedual()
 
 
 # 构造匹配记录表
-match_frame = pd.DataFrame(match_list, columns=['user', 'item', 'rate'])
+match_frame = pd.DataFrame(match_list, columns=['male', 'female', 'rate'])
 print('users with matches', len(set(match_frame.iloc[:, 0])))
 
 
@@ -172,53 +172,63 @@ def iter_filter_old(frame, N=0, M=100000, step=100):
 for i in [0, 1, 2, 3]:
     print('least match for old user', i)
     old_match_frame = iter_filter_old(match_frame, i)
-    old_user_set = set(old_match_frame['user'])
-    old_item_set = set(old_match_frame['item'])
+    old_male_set = set(old_match_frame['male'])
+    old_female_set = set(old_match_frame['female'])
 
 # 根据匹配记录生成字典
 
 
-def frame_to_dict(frame):
+def frame_to_dict(frame, user_index=0):
     match_dict = dict()
     for row in frame.iterrows():
-        user, item, rate = row[1]
+        if user_index == 0:
+            user, item, rate = row[1]
+        else:
+            item, user, rate = row[1]
         if user not in match_dict:
             match_dict[user] = dict()
         match_dict[user][item] = rate
     return match_dict
 
-male_match_dict = frame_to_dict(old_match_frame)
+male_match_dict = frame_to_dict(old_match_frame, user_index=0)
+female_match_dict = frame_to_dict(old_match_frame, user_index=1)
 
-# 组合match和positive
-positive_data = list()
-i = 0
-for user in old_user_set:
-    items = male_rating_dict[user]
-    for item in items:
-        # 只保留活跃物品
-        # if item in old_item_set:
-        #     if item in male_match_dict[user]:
-        #         positive_data.append([user, item, 2])
-        #     else:
-        #         positive_data.append([user, item, 1])
-        # 保留全部物品
-        if item in male_match_dict[user]:
-            positive_data.append([user, item, 2])
-        else:
-            positive_data.append([user, item, 1])
+def build_pos_data(old_male_set, male_rating_dict, male_match_dict):
+    # 组合match和positive
+    positive_data = list()
+    i = 0
+    for user in old_male_set:
+        items = male_rating_dict[user]
+        for item in items:
+            if item in male_match_dict[user]:
+                continue
+            else:
+                positive_data.append([user, item, 1])
+        print_schedule(begin, i, 'combine match and positive users')
+        i += 1
+    complete_schedual()
+    return pd.DataFrame(positive_data, columns=['male', 'female', 'rate'])
 
-    print_schedule(begin, i, 'combine match and positive users')
-    i += 1
-complete_schedual()
-print('user positive num', len(positive_data))
-
+male_posi_data = build_pos_data(old_male_set, male_rating_dict, male_match_dict)
+female_posi_data = build_pos_data(old_female_set, famale_rating_dict, female_match_dict)
+print('male positive num', len(male_posi_data))
+print('female positive num', len(female_posi_data))
 
 # 划分数据
-data_train, data_test = train_test_split(
-    pd.DataFrame(positive_data), test_size=0.2, random_state=0)
+match_frame['rate'] = 2
 
-data_train.to_csv('input/train.csv', index=False, header=False)
-data_test.to_csv('input/test.csv', index=False, header=False)
+match_train, match_test = train_test_split(match_frame, test_size=0.2)
+male_posi_train, male_posi_test = train_test_split(male_posi_data, test_size=0.2)
+female_posi_train, female_posi_test = train_test_split(female_posi_data, test_size=0.2)
+male_train = pd.concat([match_train, male_posi_train])
+male_test = pd.concat([match_test, male_posi_test])
+female_train = pd.concat([match_train.reindex(columns=['female', 'male', 'rate']), female_posi_train])
+female_test = pd.concat([match_test.reindex(columns=['female', 'male', 'rate']), female_posi_test])
+
+male_train.to_csv('input/male_train.csv', index=False, header=False)
+male_test.to_csv('input/male_test.csv', index=False, header=False)
+female_train.to_csv('input/female_train.csv', index=False, header=False)
+female_test.to_csv('input/female_test.csv', index=False, header=False)
 
 
 # 整理字典
