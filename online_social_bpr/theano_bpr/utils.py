@@ -76,21 +76,23 @@ def load_data_from_array(array, users_to_i = {}, items_to_i = {}):
       and a mapping from item ids to integers.
     """
     data = []
-    if len(users_to_i.values()) > 0:
-        u = max(users_to_i.values()) + 1
-    else:
+    if len(users_to_i.values()) == 0:
         u = 0
-    if len(items_to_i.values()) > 0:
-        i = max(items_to_i.values()) + 1
-    else:
         i = 0
-    for user, item, rate in array:
-        if user not in users_to_i:
-            users_to_i[user] = u
-            u += 1
-        if item not in items_to_i:
-            items_to_i[item] = i
-            i += 1
-        data.append((users_to_i[user], items_to_i[item], rate))
+        for user, item, rate in array:
+            if user not in users_to_i:
+                users_to_i[user] = u
+                u += 1
+            if item not in items_to_i:
+                items_to_i[item] = i
+                i += 1
+            data.append((users_to_i[user], items_to_i[item], rate))
+    else:
+        for user, item, rate in array:
+            if user not in users_to_i:
+                continue
+            if item not in items_to_i:
+                continue
+            data.append((users_to_i[user], items_to_i[item], rate))
     return data, users_to_i, items_to_i
 

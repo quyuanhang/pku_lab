@@ -75,7 +75,7 @@ with open(rating_file) as file:
     for row in file:
         user_id, item_id, rate = row.strip().split(',')
         rate = int(rate)
-        if rate >= 7:
+        if rate >= 5:
             user = gender_dict[user_id] + str(user_id)
             item = gender_dict[item_id] + str(item_id)
             if user[0] == 'M' and item[0] == 'F':
@@ -87,15 +87,14 @@ with open(rating_file) as file:
             elif user[0] == 'F' and item[0] == 'M':
                 female_rating += 1
                 # elif user[0] == 'F':
-                if user not in famale_rating_dict:
-                    famale_rating_dict[user] = dict()
-                famale_rating_dict[user][item] = rate
+                if item not in famale_rating_dict:
+                    famale_rating_dict[item] = dict()
+                famale_rating_dict[item][user] = rate
             # else:
             #     print(user, item)
         print_schedule(begin, i, 'reading rating file')
         i += 1
     complete_schedual()
-    print('\n', len(male_rating_dict), 'male rating', male_rating, 'female')
 
 
 print('rating dict', time.time() - begin)
@@ -109,11 +108,11 @@ male = 0
 i = 0
 for user, item_rate_dict in male_rating_dict.items():
     for item, rate in item_rate_dict.items():
-        if rate >= 7:
-            if item in famale_rating_dict:
-                if user in famale_rating_dict[item]:
-                    rate_ = famale_rating_dict[item][user]
-                    if rate_ >= 7:
+        if rate > 5:
+            if user in famale_rating_dict:
+                if item in famale_rating_dict[user]:
+                    rate_ = famale_rating_dict[user][item]
+                    if rate_ > 5:
                         if user not in match_dict:
                             match_dict[user] = dict()
                         match_dict[user][item] = rate * rate_
@@ -190,7 +189,6 @@ def frame_to_dict(frame, user_index=0):
     return match_dict
 
 male_match_dict = frame_to_dict(old_match_frame, user_index=0)
-female_match_dict = frame_to_dict(old_match_frame, user_index=1)
 
 
 def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col):
@@ -212,7 +210,7 @@ def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col):
 male_posi_data = build_pos_data(
     old_male_set, male_rating_dict, male_match_dict, col=['male', 'female', 'rate'])
 female_posi_data = build_pos_data(
-    old_female_set, famale_rating_dict, female_match_dict, col=['female', 'male', 'rate'])
+    old_male_set, famale_rating_dict, male_match_dict, col=['male', 'female', 'rate'])
 print('male positive num', len(male_posi_data))
 print('female positive num', len(female_posi_data))
 
@@ -226,10 +224,8 @@ female_posi_train, female_posi_test = train_test_split(
     female_posi_data, test_size=0.2)
 male_train = pd.concat([match_train, male_posi_train])
 male_test = pd.concat([match_test, male_posi_test])
-female_train = pd.concat([match_train.reindex(
-    columns=['female', 'male', 'rate']), female_posi_train])
-female_test = pd.concat(
-    [match_test.reindex(columns=['female', 'male', 'rate']), female_posi_test])
+female_train = pd.concat([match_train, female_posi_train])
+female_test = pd.concat([match_test, female_posi_test])
 
 male_train.to_csv('input/male_train.csv', index=False, header=False)
 male_test.to_csv('input/male_test.csv', index=False, header=False)

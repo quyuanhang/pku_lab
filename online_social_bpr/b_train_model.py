@@ -27,25 +27,23 @@ male_train, male_to_index, female_to_index = utils.load_data_from_array(
 male_test, male_to_index, female_to_index = utils.load_data_from_array(
     male_test_raw, male_to_index, female_to_index)
 female_train, female_to_index, male_to_index = utils.load_data_from_array(
-    female_train_raw, female_to_index, male_to_index)
+    female_train_raw, male_to_index, female_to_index)
 female_test, female_to_index, male_to_index = utils.load_data_from_array(
-    female_test_raw, female_to_index, male_to_index)
+    female_test_raw, male_to_index, female_to_index)
 
-male_bpr = bpr.BPR(rank=10, n_users=len(male_to_index),
+male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=100)
+male_bpr.train(male_train, epochs=1000)
 
-female_bpr = bpr.BPR(rank=10, n_users=len(female_to_index),
-              n_items=len(male_to_index), match_weight=1)
+female_bpr = bpr.BPR(rank=10, n_users=len(male_to_index),
+              n_items=len(female_to_index), match_weight=1)
 
 female_bpr.train(female_train, epochs=100)
 
 male_prediction = male_bpr.prediction_to_matrix()
-# male_prediction_scale = preprocessing.scale(male_prediction)
 female_prediction = female_bpr.prediction_to_matrix()
-# female_prediction_scale = preprocessing.scale(female_prediction)
-male_prediction_plus = male_prediction + female_prediction.T
+male_prediction_plus = male_prediction + female_prediction
 
 def auc_test(prediction_mat, train_data, test_data, s=0.3):
     def _data_to_dict(data):
@@ -68,7 +66,8 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     auc_values = []
     z = 0
     user_array = np.array(list(test_users & train_users))
-    for user in user_array[np.random.randint(len(user_array), size=s * len(user_array))]:
+    user_sample = user_array[np.random.randint(len(user_array), size=s * len(user_array))]
+    for user in user_sample:
         auc_for_user = 0.0
         n = 0
         predictions = prediction_mat[user]
@@ -96,6 +95,14 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
 auc_test(male_prediction, male_train, male_test)
 auc_test(female_prediction, female_train, female_test)
 auc_test(male_prediction_plus, male_train, male_test)
+
+male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
+female_prediction_scale = preprocessing.scale(female_prediction, axis=1)
+male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
+auc_test(male_prediction_scale, male_train, male_test)
+auc_test(female_prediction_scale, female_train, female_test)
+auc_test(male_prediction_plus_scale, male_train, male_test)
+
 
 
 # def data_to_dict(training_data, min_rate):
