@@ -283,7 +283,7 @@ class BPR(object):
         for user in range(self._n_users):
             rank_list = self.predictions(user)
             rank_lists.append(rank_list)
-        return numpy.array(rank_dict)
+        return numpy.array(rank_lists)
 
     def top_predictions(self, user_index, topn=10):
         """

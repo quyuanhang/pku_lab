@@ -12,6 +12,7 @@ sys.path.append('theano_bpr/')
 import matplotlib.pylab as plt
 import pandas as pd
 import numpy as np
+from sklearn import preprocessing
 # 本地库
 import utils
 import bpr
@@ -30,48 +31,56 @@ female_train, female_to_index, male_to_index = utils.load_data_from_array(
 female_test, female_to_index, male_to_index = utils.load_data_from_array(
     female_test_raw, female_to_index, male_to_index)
 
-male_bpr = bpr.BPR(rank=20, n_users=len(male_to_index),
+male_bpr = bpr.BPR(rank=10, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=500)
+male_bpr.train(male_train, epochs=100)
 
-male_prediction = male_bpr.prediction_to_matrix()
-
-female_bpr = bpr.BPR(rank=20, n_users=len(female_to_index),
+female_bpr = bpr.BPR(rank=10, n_users=len(female_to_index),
               n_items=len(male_to_index), match_weight=1)
 
-female_bpr.train(female_train, epochs=500)
+female_bpr.train(female_train, epochs=100)
 
+male_prediction = male_bpr.prediction_to_matrix()
+# male_prediction_scale = preprocessing.scale(male_prediction)
 female_prediction = female_bpr.prediction_to_matrix()
-
+# female_prediction_scale = preprocessing.scale(female_prediction)
 male_prediction_plus = male_prediction + female_prediction.T
 
-def auc_test(prediction_mat, train_data, test_data):
-    def _data_to_dict(self, data):
-        data_dict = dict()
-        items = set()
-        for (user, item) in data:
-            if user not in data_dict:
-                data_dict
-            data_dict[user].append(item)
-            items.add(item)
-        return data_dict, set(data_dict.keys()), items 
-    train_pos_dict, train_users, train_items = _data_to_dict(train_data)    
-    test_pos_dict, test_users, test_items = _data_to_dict(test_data)
+def auc_test(prediction_mat, train_data, test_data, s=0.3):
+    def _data_to_dict(data):
+        pos_dict = dict()
+        match_dict = dict()
+        all_items = set()
+        for (user, item, rate) in data:
+            if rate == 2:
+                if user not in match_dict:
+                    match_dict[user] = list()
+                match_dict[user].append(item)
+            if rate == 1:
+                if user not in pos_dict:
+                    pos_dict[user] = list()
+                pos_dict[user].append(item)
+            all_items.add(item)
+        return match_dict, pos_dict, (set(match_dict.keys()) & set(pos_dict.keys())), all_items
+    train_match_dict, train_pos_dict, train_users, train_items = _data_to_dict(train_data)    
+    test_match_dict, test_pos_dict, test_users, test_items = _data_to_dict(test_data)
     auc_values = []
     z = 0
-    for user in test_users:
+    user_array = np.array(list(test_users & train_users))
+    for user in user_array[np.random.randint(len(user_array), size=s * len(user_array))]:
         auc_for_user = 0.0
         n = 0
         predictions = prediction_mat[user]
-        pos_items = set(test_pos_dict[user]) - set(train_pos_dict[user])
-        neg_items = train_items - set(test_pos_dict[user]) - set(train_pos_dict[user])
-        for pos_item in pos_items:
-            for neg_item in neg_items:
+        match_items = set(test_match_dict[user]) & train_items - set(train_match_dict[user])
+        pos_items = set(test_pos_dict[user]) & train_items - set(train_pos_dict[user])
+        neg_items = train_items - match_items - pos_items - set(train_pos_dict[user]) - set(train_match_dict[user])
+        for match_item in match_items:
+            for other_item in pos_items | neg_items:
                 n += 1
-                if predictions[pos_item] > predictions[neg_item]:
+                if predictions[match_item] > predictions[other_item]:
                     auc_for_user += 1
-                elif predictions[pos_item] == predictions[neg_item]:
+                elif predictions[match_item] == predictions[other_item]:
                     auc_for_user += 0.5
         if n > 0:
             auc_for_user /= n
@@ -84,7 +93,11 @@ def auc_test(prediction_mat, train_data, test_data):
     sys.stderr.flush()
     return np.mean(auc_values)
 
+auc_test(male_prediction, male_train, male_test)
+auc_test(female_prediction, female_train, female_test)
 auc_test(male_prediction_plus, male_train, male_test)
+
+
 # def data_to_dict(training_data, min_rate):
 #     train_dict = dict()
 #     for row in training_data:
