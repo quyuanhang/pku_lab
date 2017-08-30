@@ -34,12 +34,12 @@ female_test, female_to_index, male_to_index = utils.load_data_from_array(
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=1000)
+male_bpr.train(male_train, epochs=2000)
 
-female_bpr = bpr.BPR(rank=10, n_users=len(male_to_index),
+female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-female_bpr.train(female_train, epochs=100)
+female_bpr.train(female_train, epochs=2000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 female_prediction = female_bpr.prediction_to_matrix()
@@ -66,7 +66,7 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     auc_values = []
     z = 0
     user_array = np.array(list(test_users & train_users))
-    user_sample = user_array[np.random.randint(len(user_array), size=s * len(user_array))]
+    user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
     for user in user_sample:
         auc_for_user = 0.0
         n = 0
@@ -92,16 +92,19 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     sys.stderr.flush()
     return np.mean(auc_values)
 
-auc_test(male_prediction, male_train, male_test)
-auc_test(female_prediction, female_train, female_test)
-auc_test(male_prediction_plus, male_train, male_test)
+a1 = auc_test(male_prediction, male_train, male_test)
+a2 = auc_test(female_prediction, female_train, female_test)
+a3 = auc_test(male_prediction_plus, male_train, male_test)
 
 male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
 female_prediction_scale = preprocessing.scale(female_prediction, axis=1)
 male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
-auc_test(male_prediction_scale, male_train, male_test)
-auc_test(female_prediction_scale, female_train, female_test)
-auc_test(male_prediction_plus_scale, male_train, male_test)
+a4 = auc_test(male_prediction_scale, male_train, male_test)
+a5 = auc_test(female_prediction_scale, female_train, female_test)
+a6 = auc_test(male_prediction_plus_scale, male_train, male_test)
+
+with open('auc.txt', 'w') as file:
+    file.write(str([a1, a2, a3, a4, a5, a6]))
 
 
 
