@@ -215,9 +215,9 @@ print('male positive num', len(male_posi_data))
 print('female positive num', len(female_posi_data))
 
 # 划分数据
-match_frame['rate'] = 2
+old_match_frame['rate'] = 2
 
-match_train, match_test = train_test_split(match_frame, test_size=0.2)
+match_train, match_test = train_test_split(old_match_frame, test_size=0.2)
 male_posi_train, male_posi_test = train_test_split(
     male_posi_data, test_size=0.2)
 female_posi_train, female_posi_test = train_test_split(
