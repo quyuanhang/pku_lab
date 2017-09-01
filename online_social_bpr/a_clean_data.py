@@ -191,7 +191,7 @@ def frame_to_dict(frame, user_index=0):
 male_match_dict = frame_to_dict(old_match_frame, user_index=0)
 
 
-def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col):
+def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col, rate):
     # 组合match和positive
     positive_data = list()
     i = 0
@@ -201,41 +201,25 @@ def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col):
             if item in male_match_dict[user]:
                 continue
             else:
-                positive_data.append([user, item, 1])
+                positive_data.append([user, item, rate])
         print_schedule(begin, i, 'combine match and positive users')
         i += 1
     complete_schedual()
     return pd.DataFrame(positive_data, columns=col)
 
 male_posi_data = build_pos_data(
-    old_male_set, male_rating_dict, male_match_dict, col=['male', 'female', 'rate'])
+    old_male_set, male_rating_dict, male_match_dict, col=['male', 'female', 'rate'], rate=2)
 female_posi_data = build_pos_data(
-    old_male_set, famale_rating_dict, male_match_dict, col=['male', 'female', 'rate'])
+    old_male_set, famale_rating_dict, male_match_dict, col=['male', 'female', 'rate'], rate=1)
 print('male positive num', len(male_posi_data))
 print('female positive num', len(female_posi_data))
 
 # 划分数据
-match_frame['rate'] = 2
+old_match_frame['rate'] = 3
 
-match_train, match_test = train_test_split(match_frame, test_size=0.2)
-male_posi_train, male_posi_test = train_test_split(
-    male_posi_data, test_size=0.2)
-female_posi_train, female_posi_test = train_test_split(
-    female_posi_data, test_size=0.2)
-male_train = pd.concat([match_train, male_posi_train])
-male_test = pd.concat([match_test, male_posi_test])
-female_train = pd.concat([match_train, female_posi_train])
-female_test = pd.concat([match_test, female_posi_test])
+data = pd.concat([old_match_frame, male_posi_data, female_posi_data])
 
-male_train.to_csv('input/male_train.csv', index=False, header=False)
-male_test.to_csv('input/male_test.csv', index=False, header=False)
-female_train.to_csv('input/female_train.csv', index=False, header=False)
-female_test.to_csv('input/female_test.csv', index=False, header=False)
+train, test = train_test_split(data)
 
-
-# 整理字典
-
-# dict_train = frame_to_dict(data_train)
-# dict_test = frame_to_dict(data_test)
-# save_dict(dict_train, train_file)
-# save_dict(dict_test, test_file)
+train.to_csv('input/train.csv', index=False, header=False)
+test.to_csv('input/test.csv', index=False, header=False)

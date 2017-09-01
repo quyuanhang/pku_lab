@@ -92,6 +92,7 @@ class BPR(object):
         self._train_items = set()
         self._match_dict = {}
         self._pos_dict = {}
+        self._pos_ed_dict = {}
         self._configure_theano()
         self._generate_train_model_function()
 
@@ -177,7 +178,7 @@ class BPR(object):
             sys.stderr.write(
                 "WARNING: Batch size is greater than number of training samples, switching to a batch size of %s\n" % str(len(train_data)))
             batch_size = len(train_data)
-        self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(
+        self._match_dict, self._pos_dict, self._pos_ed_dict, self._train_users, self._train_items = self._data_to_dict(
             train_data)
         n_sgd_samples = len(self._train_users) * epochs
         sgd_users, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
@@ -226,28 +227,17 @@ class BPR(object):
             numpy.random.randint(len(self._train_users), size=n_samples)]
         sgd_pos_items, sgd_neg_items = [], []
         for sgd_user in sgd_users:
+            match_item = self._match_dict[sgd_user][
+                numpy.random.randint(len(self._match_dict[sgd_user]))]
             pos_item = self._pos_dict[sgd_user][
                 numpy.random.randint(len(self._pos_dict[sgd_user]))]
+            pos_ed_item = self._pos_ed_dict[sgd_user][
+                numpy.random.randint(len(self._pos_ed_dict[sgd_user]))]
             neg_item = numpy.random.randint(self._n_items)
-            while neg_item in set(self._pos_dict[sgd_user]) | set(self._match_dict[sgd_user]):
+            while neg_item in set(self._pos_dict[sgd_user]) | set(self._match_dict[sgd_user]) | set(self._pos_ed_dict[sgd_user]) :
                 neg_item = numpy.random.randint(self._n_items)
-            if sgd_user in self._match_dict:
-                match_item = self._match_dict[sgd_user][
-                    numpy.random.randint(len(self._match_dict[sgd_user]))]
-                p = len(self._match_dict[sgd_user]) / \
-                    len(self._pos_dict[sgd_user]) * self._match_weight
-            else:
-                p = 0
-            r = numpy.random.random()
-            if r < p:
-                sgd_pos_items.append(match_item)
-                sgd_neg_items.append(neg_item)
-            elif r < 2 * p:
-                sgd_pos_items.append(match_item)
-                sgd_neg_items.append(neg_item)
-            else:
-                sgd_pos_items.append(pos_item)
-                sgd_neg_items.append(neg_item)
+            sgd_pos_items.extend([match_item, pos_item, pos_ed_item])
+            sgd_neg_items.extend([pos_item, pos_ed_item, neg_item])
         return sgd_users, sgd_pos_items, sgd_neg_items
 
     def predictions(self, user_index):
@@ -308,7 +298,7 @@ class BPR(object):
           that didn't appear in the training data, to allow
           for non-overlapping training and testing sets.
         """
-        test_match_dict, test_pos_dict, test_users, test_items = self._data_to_dict(
+        test_match_dict, test_pos_dict, test_pos_ed_dict, test_users, test_items = self._data_to_dict(
             test_data)
         auc_values, auc_match_values, auc_pos_values = [], [], []
         z = 0
@@ -363,16 +353,20 @@ class BPR(object):
     def _data_to_dict(self, data):
         pos_dict = dict()
         match_dict = dict()
+        pos_ed_dict = dict()
         all_items = set()
         for (user, item, rate) in data:
-            if rate == 2:
+            if rate == 3:
                 if user not in match_dict:
                     match_dict[user] = list()
                 match_dict[user].append(item)
-            if rate == 1:
+            elif rate == 2:
                 if user not in pos_dict:
                     pos_dict[user] = list()
                 pos_dict[user].append(item)
+            elif rate == 1:
+                if user not in pos_ed_dict:
+                    pos_ed_dict[user] = list()
+                pos_ed_dict[user].append(item)
             all_items.add(item)
-
-        return match_dict, pos_dict, (set(match_dict.keys()) & set(pos_dict.keys())), all_items
+        return match_dict, pos_dict, pos_ed_dict, (set(match_dict.keys()) & set(pos_dict.keys()) & set(pos_ed_dict.keys())), all_items
