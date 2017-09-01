@@ -34,12 +34,12 @@ female_test, female_to_index, male_to_index = utils.load_data_from_array(
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=1000)
+male_bpr.train(male_train, epochs=2000)
 
 female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-female_bpr.train(female_train, epochs=1000 )
+female_bpr.train(female_train, epochs=2000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 female_prediction = female_bpr.prediction_to_matrix()
@@ -67,6 +67,9 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     z = 0
     user_array = np.array(list(test_users & train_users))
     user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
+# =============================================================================
+#     user_sample = user_array
+# =============================================================================
     for user in user_sample:
         auc_for_user = 0.0
         n = 0
@@ -99,18 +102,21 @@ auc_test(male_prediction, male_train, male_test)
 auc_test(female_prediction, female_train, female_test)
 auc_test(male_prediction_plus, male_train, male_test)
 
-# =============================================================================
-# male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
-# female_prediction_scale = preprocessing.scale(female_prediction, axis=1)
-# =============================================================================
-male_prediction_scale = np.argsort(-male_prediction, axis=1)
-female_prediction_scale = np.argsort(-female_prediction, axis=1)
+male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
+female_prediction_scale = preprocessing.scale(female_prediction, axis=1)
 male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
 
 auc_test(male_prediction_scale, male_train, male_test)
 auc_test(female_prediction_scale, female_train, female_test)
 auc_test(male_prediction_plus_scale, male_train, male_test)
 
+male_prediction_scale = np.argsort(-male_prediction, axis=0) / len(male_prediction[0])
+female_prediction_scale = np.argsort(-female_prediction, axis=0) / len(male_prediction[0])
+male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
+
+auc_test(male_prediction_scale, male_train, male_test)
+auc_test(female_prediction_scale, female_train, female_test)
+auc_test(male_prediction_plus_scale, male_train, male_test)
 
 
 # def data_to_dict(training_data, min_rate):
