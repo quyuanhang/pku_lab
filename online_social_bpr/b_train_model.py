@@ -53,10 +53,10 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     auc_values = []
     z = 0
     user_array = np.array(list(test_users & train_users))
-    user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
-# =============================================================================
-#     user_sample = user_array
-# =============================================================================
+    if s == 1:
+        user_sample = user_array
+    else:
+        user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
     for user in user_sample:
         auc_for_user = 0.0
         n = 0
@@ -83,4 +83,77 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     return np.mean(auc_values)
 
 
-auc_test(male_prediction, male_train, male_test)
+auc_test(male_prediction, male_train, male_test, 0.1)
+
+prediction = bpr.prediction_to_dict(100)
+
+def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base'):
+    tp, fp, fn = 0, 0, 0
+    precision_recall_list = list()
+    for exp, job_rank_dict in recommend_dict.items():
+        if exp in lable_dict:
+            job_rank = sorted(job_rank_dict.items(),
+                              key=lambda x: x[1], reverse=True)
+            rec = [j_r[0] for j_r in job_rank[:top]]
+            rec_set = set(rec)
+            positive_set = set(lable_dict[exp].keys())
+            tp += len(rec_set & positive_set)
+            fp += len(rec_set - positive_set)
+            fn += len(positive_set - rec_set)
+            if mode == 'max':
+                precision = 1 if rec_set & positive_set else 0
+                recall = 1 if rec_set & positive_set else 0
+            else:
+                precision = len(rec_set & positive_set) / len(rec_set)
+                recall = len(rec_set & positive_set) / len(positive_set)
+            precision_recall_list.append([precision, recall])
+    if (mode == 'base') or (mode == 'max'):
+        df = pd.DataFrame(precision_recall_list, columns=[
+                          'precision', 'recall'])
+        return pd.DataFrame([df.mean(), df.std()], index=['mean', 'std'])
+    elif mode == 'sum':
+        return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
+
+precision_list, recall_list = [], []
+for k in range(1, 100, 5):
+    precision, recall = evaluate(prediction, male_test, male_train, top=k, mode='base').values[0]
+    precision_list.append(precision)
+    recall_list.append(recall)
+
+plt.scatter(precision_list, recall_list)
+
+def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base'):
+    tp, fp, fn = 0, 0, 0
+    precision_recall_list = list()
+    for exp, job_rank_dict in recommend_dict.items():
+        if exp in set(lable_dict.keys()) & set(train_dict.keys()):
+            job_rank = sorted(job_rank_dict.items(),
+                              key=lambda x: x[1], reverse=True)
+            rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
+            rec_set = set(rec)
+            positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
+            tp += len(rec_set & positive_set)
+            fp += len(rec_set - positive_set)
+            fn += len(positive_set - rec_set)
+            if len(positive_set) > 0:
+                if mode == 'max':
+                    precision = 1 if rec_set & positive_set else 0
+                    recall = 1 if rec_set & positive_set else 0
+                else:
+                    precision = len(rec_set & positive_set) / len(rec_set)
+                    recall = len(rec_set & positive_set) / len(positive_set)
+                precision_recall_list.append([precision, recall])
+    if (mode == 'base') or (mode == 'max'):
+        df = pd.DataFrame(precision_recall_list, columns=[
+                          'precision', 'recall'])
+        return pd.DataFrame([df.mean(), df.std()], index=['mean', 'std'])
+    elif mode == 'sum':
+        return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
+
+precision_list, recall_list = [], []
+for k in range(1, 100, 5):
+    precision, recall = evaluate(prediction, male_test, male_train, top=k, mode='base').values[0]
+    precision_list.append(precision)
+    recall_list.append(recall)
+
+plt.scatter(precision_list, recall_list)

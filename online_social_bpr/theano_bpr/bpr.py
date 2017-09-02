@@ -259,14 +259,6 @@ class BPR(object):
         """
         return self.predictions(user_index)[item_index]
 
-    def prediction_to_dict(self):
-        rank_dict = dict()
-        for user in range(self._n_users):
-            rank_list = self.predictions(user)
-            rank_dict[user] = dict()
-            for item, rank in enumerate(rank_list):
-                rank_dict[user][item] = rank
-        return rank_dict
 
     def prediction_to_matrix(self):
         rank_lists = list()
@@ -274,6 +266,23 @@ class BPR(object):
             rank_list = self.predictions(user)
             rank_lists.append(rank_list)
         return numpy.array(rank_lists)
+
+    def prediction_to_dict(self, topn):
+        rank_dict = dict()
+        z = 0
+        for user in range(self._n_users):
+            rank_list = self.top_predictions(user, topn)
+            try:
+                rank_dict[user] = dict(rank_list)
+            except:
+                import pdb
+                pdb.set_trace()
+            z += 1
+            if z % 10 == 0:
+                sys.stderr.write("\rgenerate %d predictions" % z)
+                sys.stderr.flush()            
+        return rank_dict
+
 
     def top_predictions(self, user_index, topn=10):
         """
@@ -283,10 +292,9 @@ class BPR(object):
           This won't return any of the items associated with `user_index`
           in the training set.
         """
-        return [
-            item_index for item_index in numpy.argsort(self.predictions(user_index))
-            if item_index not in self._pos_dict[user_index]
-        ][::-1][:topn]
+        rank_list = enumerate(self.predictions(user_index))
+        top_list = heapq.nlargest(topn, rank_list, key=lambda x: x[1])
+        return top_list
 
     def test(self, test_data):
         """
