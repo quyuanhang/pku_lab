@@ -31,15 +31,15 @@ female_train, female_to_index, male_to_index = utils.load_data_from_array(
 female_test, female_to_index, male_to_index = utils.load_data_from_array(
     female_test_raw, male_to_index, female_to_index)
 
-male_bpr = bpr.BPR(rank=10, n_users=len(male_to_index),
+male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=1000)
+male_bpr.train(male_train, epochs=2000)
 
-female_bpr = bpr.BPR(rank=10, n_users=len(male_to_index),
+female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-female_bpr.train(female_train, epochs=1000)
+female_bpr.train(female_train, epochs=2000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 female_prediction = female_bpr.prediction_to_matrix()
@@ -100,23 +100,25 @@ female_test, female_to_index, male_to_index = utils.load_data_from_array(
 
 auc_test(male_prediction, male_train, male_test)
 auc_test(female_prediction, female_train, female_test)
-auc_test(male_prediction_plus, male_train, male_test)
+auc_test(male_prediction_plus, male_train, male_test, 1)
 
-male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
-female_prediction_scale = preprocessing.scale(female_prediction, axis=1)
+# =============================================================================
+# male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
+# female_prediction_scale = preprocessing.scale(female_prediction, axis=1)
+# male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
+# 
+# auc_test(male_prediction_scale, male_train, male_test)
+# auc_test(female_prediction_scale, female_train, female_test)
+# auc_test(male_prediction_plus_scale, male_train, male_test)
+# =============================================================================
+
+male_prediction_scale = np.argsort(np.argsort(male_prediction, axis=1))
+female_prediction_scale = np.argsort(np.argsort(female_prediction, axis=1))
 male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
 
 auc_test(male_prediction_scale, male_train, male_test)
 auc_test(female_prediction_scale, female_train, female_test)
-auc_test(male_prediction_plus_scale, male_train, male_test)
-
-male_prediction_scale = np.argsort(-male_prediction, axis=0) / len(male_prediction[0])
-female_prediction_scale = np.argsort(-female_prediction, axis=0) / len(male_prediction[0])
-male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
-
-auc_test(male_prediction_scale, male_train, male_test)
-auc_test(female_prediction_scale, female_train, female_test)
-auc_test(male_prediction_plus_scale, male_train, male_test)
+auc_test(male_prediction_plus_scale, male_train, male_test, 1)
 
 
 
@@ -127,26 +129,29 @@ def data_to_dict(training_data, min_rate):
         if rate >= min_rate:
             if user not in train_dict:
                 train_dict[user] = dict()
-            train_dict[user][item] = 1
+            train_dict[user][item] = rate
     return train_dict
 
 train_dict = data_to_dict(male_train, 2)
 test_dict = data_to_dict(male_test, 2)
-pre_dict = male_bpr.prediction_to_dict()
+pre_dict = male_bpr.prediction_to_dict(100)
 
-def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base'):
+def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
     tp, fp, fn = 0, 0, 0
     precision_recall_list = list()
-    for exp, job_rank_dict in recommend_dict.items():
-        if exp in lable_dict:
-            job_rank = sorted(job_rank_dict.items(),
-                              key=lambda x: x[1], reverse=True)
-            rec = [j_r[0] for j_r in job_rank[:top]]
-            rec_set = set(rec)
-            positive_set = set(lable_dict[exp].keys())
-            tp += len(rec_set & positive_set)
-            fp += len(rec_set - positive_set)
-            fn += len(positive_set - rec_set)
+    user_array = np.array(list(set(lable_dict.keys()) & set(train_dict.keys())))
+    user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
+    for exp in user_sample:
+        job_rank_dict = recommend_dict[exp]
+        job_rank = sorted(job_rank_dict.items(),
+                            key=lambda x: x[1], reverse=True)
+        rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
+        rec_set = set(rec)
+        positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
+        tp += len(rec_set & positive_set)
+        fp += len(rec_set - positive_set)
+        fn += len(positive_set - rec_set)
+        if len(positive_set) > 0:
             if mode == 'max':
                 precision = 1 if rec_set & positive_set else 0
                 recall = 1 if rec_set & positive_set else 0
@@ -154,42 +159,6 @@ def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base'):
                 precision = len(rec_set & positive_set) / len(rec_set)
                 recall = len(rec_set & positive_set) / len(positive_set)
             precision_recall_list.append([precision, recall])
-    if (mode == 'base') or (mode == 'max'):
-        df = pd.DataFrame(precision_recall_list, columns=[
-                          'precision', 'recall'])
-        return pd.DataFrame([df.mean(), df.std()], index=['mean', 'std'])
-    elif mode == 'sum':
-        return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
-
-precision_list, recall_list = [], []
-for k in range(1, 100, 5):
-    precision, recall = evaluate(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
-    precision_list.append(precision)
-    recall_list.append(recall)
-
-plt.scatter(precision_list, recall_list)
-
-def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base'):
-    tp, fp, fn = 0, 0, 0
-    precision_recall_list = list()
-    for exp, job_rank_dict in recommend_dict.items():
-        if exp in set(lable_dict.keys()) & set(train_dict.keys()):
-            job_rank = sorted(job_rank_dict.items(),
-                              key=lambda x: x[1], reverse=True)
-            rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
-            rec_set = set(rec)
-            positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
-            tp += len(rec_set & positive_set)
-            fp += len(rec_set - positive_set)
-            fn += len(positive_set - rec_set)
-            if len(positive_set) > 0:
-                if mode == 'max':
-                    precision = 1 if rec_set & positive_set else 0
-                    recall = 1 if rec_set & positive_set else 0
-                else:
-                    precision = len(rec_set & positive_set) / len(rec_set)
-                    recall = len(rec_set & positive_set) / len(positive_set)
-                precision_recall_list.append([precision, recall])
     if (mode == 'base') or (mode == 'max'):
         df = pd.DataFrame(precision_recall_list, columns=[
                           'precision', 'recall'])
