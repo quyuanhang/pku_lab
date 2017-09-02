@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import theano
+import heapq
 import numpy
 import theano.tensor as T
 import theano_lstm

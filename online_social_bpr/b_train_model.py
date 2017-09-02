@@ -85,7 +85,7 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
 
 auc_test(male_prediction, male_train, male_test, 0.1)
 
-prediction = bpr.prediction_to_dict(100)
+prediction = male_bpr.prediction_to_dict(100)
 
 def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base'):
     tp, fp, fn = 0, 0, 0
