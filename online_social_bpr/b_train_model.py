@@ -18,18 +18,20 @@ import utils
 import bpr
 
 male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
-male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
 female_train_raw = pd.read_csv('input/female_train.csv', header=None).values
-female_test_raw = pd.read_csv('input/female_test.csv', header=None).values
+
+male_train_raw[:, 2] = np.array(list(map(lambda x: max(x // 50, 1), male_train_raw[:, 2])))
+female_train_raw[:, 2] = np.array(list(map(lambda x: max(x // 50, 1), female_train_raw[:, 2])))
+
+male_set = set(male_train_raw[:, 0]) & set(female_train_raw[:, 0])
+female_set = set(male_train_raw[:, 1]) & set(female_train_raw[:, 1])
+male_to_index = dict(zip(male_set, range(len(male_set))))
+female_to_index = dict(zip(female_set, range(len(female_set))))
 
 male_train, male_to_index, female_to_index = utils.load_data_from_array(
-    male_train_raw)
-male_test, male_to_index, female_to_index = utils.load_data_from_array(
-    male_test_raw, male_to_index, female_to_index)
-female_train, female_to_index, male_to_index = utils.load_data_from_array(
+    male_train_raw, male_to_index, female_to_index)
+female_train, male_to_index, female_to_index = utils.load_data_from_array(
     female_train_raw, male_to_index, female_to_index)
-female_test, female_to_index, male_to_index = utils.load_data_from_array(
-    female_test_raw, male_to_index, female_to_index)
 
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
@@ -95,7 +97,15 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     sys.stderr.flush()
     return np.mean(auc_values)
 
-female_test, female_to_index, male_to_index = utils.load_data_from_array(
+male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
+female_test_raw = pd.read_csv('input/female_test.csv', header=None).values
+
+male_test_raw[:, 2] = np.array(list(map(lambda x: max(x // 50, 1), male_test_raw[:, 2])))
+female_test_raw[:, 2] = np.array(list(map(lambda x: max(x // 50, 1), female_test_raw[:, 2])))
+
+male_test, male_to_index, female_to_index = utils.load_data_from_array(
+    male_test_raw, male_to_index, female_to_index)
+female_test, male_to_index, female_to_index = utils.load_data_from_array(
     female_test_raw, male_to_index, female_to_index)
 
 auc_test(male_prediction, male_train, male_test)
@@ -120,7 +130,28 @@ auc_test(male_prediction_scale, male_train, male_test)
 auc_test(female_prediction_scale, female_train, female_test)
 auc_test(male_prediction_plus_scale, male_train, male_test, 1)
 
+def auc(p_array, test_y, split):
+    positive_index = [i[0] for i in enumerate(test_y) if i[1] >= split]
+    negative_index = [i[0] for i in enumerate(test_y) if i[1] < split]
+    positive_score = p_array[positive_index]
+    negative_score = p_array[negative_index]
+    auc = 0.0
+    for pos_s in positive_score:
+        for neg_s in negative_score:
+            if pos_s > neg_s:
+                auc += 1
+            if pos_s == neg_s:
+                auc += 0.5
+    auc /= (len(positive_score) * len(negative_score))
+    return auc
 
+with open('input/male_test.csv') as file:
+    test_data_ = pd.read_csv(file, header=None).values
+test_data = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2] // 100]
+    for i in test_data_ if i[0] in male_to_index and i[1] in female_to_index])
+p_array = np.array(list(map(lambda x: male_prediction_plus_scale[x[0], x[1]], test_data)))
+test_y = test_data[:, 2]
+print(auc(p_array, test_y, 1))
 
 def data_to_dict(training_data, min_rate):
     train_dict = dict()
