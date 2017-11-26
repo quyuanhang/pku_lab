@@ -132,6 +132,15 @@ class IBCF(object):
             self.recommend_one_user(user, K)
         return rec_dict
 
+class evalue(object):
+    """docstring for evalue"""
+    def __init__(self, train_data, test_data):
+        self.train_data = train_data
+        self.test_data = test_data
+
+    def auc
+        
+
 
 
         
