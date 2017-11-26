@@ -132,13 +132,44 @@ class IBCF(object):
             self.recommend_one_user(user, K)
         return rec_dict
 
-class evalue(object):
-    """docstring for evalue"""
-    def __init__(self, train_data, test_data):
+class SRI(object):
+    """docstring for SRI"""
+    def __init__(self, train_data, test_data, rec_data):
         self.train_data = train_data
         self.test_data = test_data
+        self.rec_data = rec_data
+        self.user_set = set(train_data.keys()) & set(test_data.keys())
+        self.BSR()
 
-    def auc
+    def BSR(self):
+        u_set = set()
+        i_set = set()
+        sr = 0
+        for u, i_r in tqdm.tqdm(test_data):
+            if u not in self.user_set():
+                continue
+            sr += len(set(i_r) & self.user_set)
+        sr /= len(self.user_set) ** 2
+        self.bsr = sr
+
+    def SRI(self, data, K):
+        s = 0
+        r = 0
+        for u, rec in self.rec_data.items():
+            if u not in self.user_set:
+                continue
+            k_rec = set(list(rec.keys())[:K])
+            s += len(k_rec & set(self.test_data[u].keys()))
+            r += len(k_rec & self.user_set)
+        sr = s / r
+        sri = sr / self.bsr
+        return sri
+
+        
+
+
+
+        
         
 
 
