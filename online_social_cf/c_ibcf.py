@@ -65,7 +65,7 @@ class ItemBasedCF:
                 rank[j] += score * wj
         return collections.OrderedDict(sorted(rank.items(), key=lambda x: x[1], reverse=True)[0:K])
 
-    def recommend_all(self, K, user_list=self.train.keys()):
+    def recommend_all(self, K):
         rec_dict = dict()
         print('item based recommending')
         for user in tqdm.tqdm(self.train):
@@ -98,7 +98,7 @@ class UserBasedCF(object):
                     rank[i] += w * r
         return collections.OrderedDict(sorted(rank.items(), key=lambda x: x[1], reverse=True)[0:K])
 
-    def recommend_all(self, K, user_list=self.train.keys()):
+    def recommend_all(self, K):
         rec_dict = dict()
         print('user based recommending')
         for user in tqdm.tqdm(self.train):
@@ -125,7 +125,9 @@ class IBCF(object):
         rec_dict = collections.OrderedDict(sorted(rec_dict.items(), key=lambda x: x[1], reverse=True)[0:K])
         return rec_dict
 
-    def recommend_all(self, K, user_list=self.train.keys()):
+    def recommend_all(self, K, user_list=0):
+        if user_list == 0:
+            user_list = self.train.keys()
         rec_dict = dict()
         print('ibcd recommending')
         for user in tqdm.tqdm(user_list):
@@ -142,10 +144,8 @@ class SRI(object):
         self.BSR()
 
     def BSR(self):
-        u_set = set()
-        i_set = set()
         sr = 0
-        for u, i_r in tqdm.tqdm(test_data):
+        for u, i_r in tqdm.tqdm(self.test_data):
             if u not in self.user_set():
                 continue
             sr += len(set(i_r) & self.user_set)
@@ -163,7 +163,8 @@ class SRI(object):
             r += len(k_rec & self.user_set)
         sr = s / r
         sri = sr / self.bsr
-        return sri
+        return sri 
+
 
         
 
