@@ -6,9 +6,8 @@ import pandas as pd
 import datetime
 import tqdm
 
-train_file = 'input/filter_match_dict_train.json'
-test_file = 'input/filter_match_dict_test.json'
-neighbor_file = 'output/neighbor.json'
+train_file = 'input/match_train.csv'
+test_file = 'input/match_test.csv'
 
 
 def read_file(file_name):
@@ -22,6 +21,19 @@ def save_dict(obj, file_dir):
     s = json.dumps(obj, indent=4, ensure_ascii=False)
     f.write(s)
     f.close()
+
+def frame_to_dict(frame, user_index=0):
+    match_dict = dict()
+    for row in frame.iterrows():
+        if user_index == 0:
+            user, item, rate = row[1]
+        else:
+            item, user, rate = row[1]
+        if user not in match_dict:
+            match_dict[user] = dict()
+        match_dict[user][item] = rate
+    return match_dict
+
 
 
 class ItemBasedCF:
@@ -95,7 +107,7 @@ class UserBasedCF(object):
         rank = dict()
         action_item = self.train[user]
         for _u, w in self.W[user].items():
-            for i, r in self.W[user].items():
+            for i, r in self.train[_u].items():
                 if i not in action_item:
                     rank.setdefault(i, 0)
                     rank[i] += w * r
@@ -138,28 +150,41 @@ class IBCF(object):
         rec_dict = dict()
         print('ibcd recommending')
         for user in tqdm.tqdm(user_list):
-            self.recommend_one_user(user, K)
+            rec_dict[user] = self.recommend_one_user(user, K)
         return rec_dict
 
 class SRI(object):
     """docstring for SRI"""
-    def __init__(self, train_data, test_data, rec_data):
+    def __init__(self, train_data, test_data, rec_data, bsr):
         self.train_data = train_data
         self.test_data = test_data
         self.rec_data = rec_data
         self.user_set = set(train_data.keys()) & set(test_data.keys())
-        self.BSR()
+        # train_item = set()
+        # test_item = set()
+        # for u, i_r in train_data.items():
+        #     if len(i_r) == 1:
+        #         train_item.add(i_r.keys())
+        #     else:
+        #         train_item.update(i_r.keys())
+        # for u, i_r in test_data.items():
+        #     if len(i_r) == 1:
+        #         test_item.add(i_r.keys())
+        #     else:
+        #         test_item.update(i_r.keys())
+        # self.item_set = train_item & test_item
+        self.bsr = bsr
 
     def BSR(self):
         sr = 0
-        for u, i_r in tqdm.tqdm(self.test_data):
-            if u not in self.user_set():
+        for u, i_r in tqdm.tqdm(self.test_data.items()):
+            if u not in self.user_set:
                 continue
-            sr += len(set(i_r) & self.user_set)
+            sr += len(i_r)
         sr /= len(self.user_set) ** 2
         self.bsr = sr
 
-    def SRI(self, data, K):
+    def SRI(self, K):
         s = 0
         r = 0
         for u, rec in self.rec_data.items():
@@ -167,20 +192,35 @@ class SRI(object):
                 continue
             k_rec = set(list(rec.keys())[:K])
             s += len(k_rec & set(self.test_data[u].keys()))
-            r += len(k_rec & self.user_set)
+            r += len(k_rec)
         sr = s / r
         sri = sr / self.bsr
         return sri 
 
+train_frame = pd.read_csv(train_file, header=None)
+# =============================================================================
+# train_frame = train_frame.reindex(columns=[1,0,2])
+# =============================================================================
+train_data = frame_to_dict(train_frame, user_index=0)
+test_frame = pd.read_csv(test_file, header=None)
+# =============================================================================
+# test_frame = test_frame.reindex(columns=[1,0,2])
+# =============================================================================
+test_data = frame_to_dict(test_frame, user_index=0)
 
-train_data = read_file(train_file)       
-test_data = read_file(test_file)
 my_ucf = UserBasedCF(train_data)
+recommend = my_ucf.recommend_all(5)
 my_icf = ItemBasedCF(train_data)
-my_ibcf = IBCF(train_data, my_ucf, my_icf)
-recommend = my_ibcf.recommend_all(5)
+recommend = my_icf.recommend_all(5)
+# =============================================================================
+# my_ibcf = IBCF(train_data, my_ucf, my_icf)
+# =============================================================================
+# =============================================================================
+# recommend = my_ibcf.recommend_all(5)
+# =============================================================================
 
-
+my_sri = SRI(train_data, test_data, recommend, 1)
+print(my_sri.SRI(5))
 
         
         
