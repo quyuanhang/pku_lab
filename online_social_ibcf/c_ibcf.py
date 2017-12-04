@@ -212,17 +212,44 @@ my_ucf = UserBasedCF(train_data)
 recommend = my_ucf.recommend_all(5)
 my_icf = ItemBasedCF(train_data)
 recommend = my_icf.recommend_all(5)
-# =============================================================================
-# my_ibcf = IBCF(train_data, my_ucf, my_icf)
-# =============================================================================
-# =============================================================================
-# recommend = my_ibcf.recommend_all(5)
-# =============================================================================
+my_ibcf = IBCF(train_data, my_ucf, my_icf)
+recommend = my_ibcf.recommend_all(5)
 
 my_sri = SRI(train_data, test_data, recommend, 1)
 print(my_sri.SRI(5))
 
-        
+def auc(train_dict, rank_dict, test_dict):
+    train_items = set()
+    for user, item_rank in train_dict.items():
+        train_items = train_items | set(item_rank.keys())
+    auc_values = []
+    z = 0
+    user_set = set(train_dict.keys()) & set(test_dict.keys())
+    for user in user_set:
+        predictions = rank_dict[user]
+        auc_for_user = 0.0
+        n = 0
+        pos_items = set(predictions.keys()) & set(test_dict[user].keys())
+        neg_items = set(predictions.keys()) - pos_items
+        for pos_item in pos_items:
+            for neg_item in neg_items:
+                n += 1
+                if predictions[pos_item] > predictions[neg_item]:
+                    auc_for_user += 1
+                elif predictions[pos_item] == predictions[neg_item]:
+                    auc_for_user += 0.5
+            if n > 0:
+                auc_for_user /= n
+                auc_values.append(auc_for_user)
+            z += 1
+            if z % 100 == 0 and len(auc_values) > 0:
+                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (str(z), numpy.mean(auc_values)))
+                sys.stderr.flush()
+    sys.stderr.write("\n")
+    sys.stderr.flush()
+    return numpy.mean(auc_values)  
+
+print(auc(train_data, recommend, test_data))
         
 
 
