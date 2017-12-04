@@ -75,7 +75,7 @@ with open(rating_file) as file:
     for row in file:
         user_id, item_id, rate = row.strip().split(',')
         rate = int(rate)
-        if rate >= 5:
+        if rate >= 0:
             user = gender_dict[user_id] + str(user_id)
             item = gender_dict[item_id] + str(item_id)
             if user[0] == 'M' and item[0] == 'F':
@@ -108,11 +108,11 @@ male = 0
 i = 0
 for user, item_rate_dict in male_rating_dict.items():
     for item, rate in item_rate_dict.items():
-        if rate > 5:
+        if rate > 0:
             if user in famale_rating_dict:
                 if item in famale_rating_dict[user]:
                     rate_ = famale_rating_dict[user][item]
-                    if rate_ > 5:
+                    if rate_ > 0:
                         if user not in match_dict:
                             match_dict[user] = dict()
                         match_dict[user][item] = rate * rate_
@@ -201,7 +201,7 @@ def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col):
             if item in male_match_dict[user]:
                 continue
             else:
-                positive_data.append([user, item, 1])
+                positive_data.append([user, item, items[item]])
         print_schedule(begin, i, 'combine match and positive users')
         i += 1
     complete_schedual()
@@ -211,17 +211,18 @@ male_posi_data = build_pos_data(
     old_male_set, male_rating_dict, male_match_dict, col=['male', 'female', 'rate'])
 female_posi_data = build_pos_data(
     old_male_set, famale_rating_dict, male_match_dict, col=['male', 'female', 'rate'])
+female_set = set(male_posi_data['female']) & set(female_posi_data['female'])
+male_posi_data = male_posi_data[male_posi_data['female'].map(lambda x: x in female_set)]
+female_posi_data = female_posi_data[female_posi_data['female'].map(lambda x: x in female_set)]
+
 print('male positive num', len(male_posi_data))
 print('female positive num', len(female_posi_data))
 
 # 划分数据
-old_match_frame['rate'] = 2
+match_train, match_test = train_test_split(old_match_frame)
+male_posi_train, male_posi_test = train_test_split(male_posi_data)
+female_posi_train, female_posi_test = train_test_split(female_posi_data)
 
-match_train, match_test = train_test_split(old_match_frame, test_size=0.2)
-male_posi_train, male_posi_test = train_test_split(
-    male_posi_data, test_size=0.2)
-female_posi_train, female_posi_test = train_test_split(
-    female_posi_data, test_size=0.2)
 male_train = pd.concat([match_train, male_posi_train])
 male_test = pd.concat([match_test, male_posi_test])
 female_train = pd.concat([match_train, female_posi_train])
@@ -231,11 +232,3 @@ male_train.to_csv('input/male_train.csv', index=False, header=False)
 male_test.to_csv('input/male_test.csv', index=False, header=False)
 female_train.to_csv('input/female_train.csv', index=False, header=False)
 female_test.to_csv('input/female_test.csv', index=False, header=False)
-
-
-# 整理字典
-
-# dict_train = frame_to_dict(data_train)
-# dict_test = frame_to_dict(data_test)
-# save_dict(dict_train, train_file)
-# save_dict(dict_test, test_file)

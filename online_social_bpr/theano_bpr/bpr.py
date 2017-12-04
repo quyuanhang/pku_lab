@@ -15,6 +15,7 @@
 # limitations under the License.
 
 import theano
+import heapq
 import numpy
 import theano.tensor as T
 import theano_lstm
@@ -226,14 +227,12 @@ class BPR(object):
             numpy.random.randint(len(self._train_users), size=n_samples)]
         sgd_pos_items, sgd_neg_items = [], []
         for sgd_user in sgd_users:
-            pos_item = self._pos_dict[sgd_user][
-                numpy.random.randint(len(self._pos_dict[sgd_user]))]
+            match_item = self._match_dict[sgd_user][numpy.random.randint(len(self._match_dict[sgd_user]))]            
+            pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
             neg_item = numpy.random.randint(self._n_items)
             while neg_item in set(self._pos_dict[sgd_user]) | set(self._match_dict[sgd_user]):
                 neg_item = numpy.random.randint(self._n_items)
             if sgd_user in self._match_dict:
-                match_item = self._match_dict[sgd_user][
-                    numpy.random.randint(len(self._match_dict[sgd_user]))]
                 p = len(self._match_dict[sgd_user]) / \
                     len(self._pos_dict[sgd_user]) * self._match_weight
             else:
@@ -269,21 +268,29 @@ class BPR(object):
         """
         return self.predictions(user_index)[item_index]
 
-    def prediction_to_dict(self):
-        rank_dict = dict()
-        for user in range(self._n_users):
-            rank_list = self.predictions(user)
-            rank_dict[user] = dict()
-            for item, rank in enumerate(rank_list):
-                rank_dict[user][item] = rank
-        return rank_dict
-
     def prediction_to_matrix(self):
         rank_lists = list()
         for user in range(self._n_users):
             rank_list = self.predictions(user)
             rank_lists.append(rank_list)
         return numpy.array(rank_lists)
+
+    def prediction_to_dict(self, topn):
+        rank_dict = dict()
+        z = 0
+        for user in range(self._n_users):
+            rank_list = self.top_predictions(user, topn)
+            try:
+                rank_dict[user] = dict(rank_list)
+            except:
+                import pdb
+                pdb.set_trace()
+            z += 1
+            if z % 10 == 0:
+                sys.stderr.write("\rgenerate %d predictions" % z)
+                sys.stderr.flush()            
+        return rank_dict
+
 
     def top_predictions(self, user_index, topn=10):
         """
@@ -293,10 +300,9 @@ class BPR(object):
           This won't return any of the items associated with `user_index`
           in the training set.
         """
-        return [
-            item_index for item_index in numpy.argsort(self.predictions(user_index))
-            if item_index not in self._pos_dict[user_index]
-        ][::-1][:topn]
+        rank_list = enumerate(self.predictions(user_index))
+        top_list = heapq.nlargest(topn, rank_list, key=lambda x: x[1])
+        return top_list
 
     def test(self, test_data):
         """
