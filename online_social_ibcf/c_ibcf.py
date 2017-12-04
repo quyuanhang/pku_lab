@@ -1,7 +1,7 @@
 import sys
 import json
 import collections
-import numpy
+import numpy as np
 import pandas as pd
 import datetime
 import tqdm
@@ -243,13 +243,34 @@ def auc(train_dict, rank_dict, test_dict):
                 auc_values.append(auc_for_user)
             z += 1
             if z % 100 == 0 and len(auc_values) > 0:
-                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (str(z), numpy.mean(auc_values)))
+                sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (str(z), np.mean(auc_values)))
                 sys.stderr.flush()
     sys.stderr.write("\n")
     sys.stderr.flush()
-    return numpy.mean(auc_values)  
+    return np.mean(auc_values)  
 
 print(auc(train_data, recommend, test_data))
+
+def auc_(p_array, test_y, split):
+    positive_index = [i[0] for i in enumerate(test_y) if i[1] >= split]
+    negative_index = [i[0] for i in enumerate(test_y) if i[1] < split]
+    positive_score = p_array[positive_index]
+    negative_score = p_array[negative_index]
+    auc = 0.0
+    for pos_s in positive_score:
+        for neg_s in negative_score:
+            if pos_s > neg_s:
+                auc += 1
+            if pos_s == neg_s:
+                auc += 0.5
+    auc /= (len(positive_score) * len(negative_score))
+    return auc
+
+with open('input/male_test.csv') as file:
+    test_data_ = pd.read_csv(file, header=None).values
+p_array = np.array(list(map(lambda x: recommend[x[0]][x[1]] if x[0] in recommend and x[1] in recommend[x[0]] else 0, test_data_)))
+test_y = test_data_[:, 2]
+print(auc_(p_array, test_y, 2))
         
 
 
