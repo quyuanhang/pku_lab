@@ -248,3 +248,5 @@ test_male = np.array([[male_index_dict[i[0]], female_index_dict[i[1]], i[2]]
     for i in test_male if i[0] in male_index_dict and i[1] in female_index_dict])
 male_prediction = model.prediction_matrix()
 auc_test(male_prediction, train_male, test_male)
+
+def mat_to_dict(matix)

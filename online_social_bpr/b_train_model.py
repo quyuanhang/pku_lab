@@ -198,7 +198,7 @@ def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=
         return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
 
 precision_list, recall_list = [], []
-for k in range(1, 100, 5):
+for k in range(1, 50, 5):
     precision, recall = evaluate(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)
