@@ -10,6 +10,7 @@ import time
 import tensorflow as tf
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 train_male = pd.read_csv('input/male_train.csv', header=None).values
 train_female = pd.read_csv('input/female_train.csv', header=None).values
@@ -153,7 +154,7 @@ begin = time.time()
 l_loss = 0
 i = 0
 stop = 0
-while i < 5000:
+while i < 500:
     c_loss = model.partial_fit(train_male[:, [0, 1]], train_male[:, [2]], 
                         train_female[:, [0, 1]], train_female[:, [2]])    
     if abs(c_loss - l_loss) == 0:
@@ -243,7 +244,7 @@ def auc_test(prediction_mat, train_data, test_data, s=0.3):
     sys.stderr.flush()
     return np.mean(auc_values)
 
-test_male = pd.read_csv('input/male_test.csv', header=None).values
+test_male = pd.read_csv('input/test.csv', header=None).values
 test_male = np.array([[male_index_dict[i[0]], female_index_dict[i[1]], i[2]]
     for i in test_male if i[0] in male_index_dict and i[1] in female_index_dict])
 male_prediction = model.prediction_matrix()
@@ -256,7 +257,7 @@ def evaluate(recommend, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
     user_array = np.array(list(set(lable_dict.keys()) & set(train_dict.keys())))
     user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
     for exp in user_sample:
-        job_rank_dict = recommend[exp]
+        job_rank_list = recommend[exp]
         job_rank = sorted(enumerate(job_rank_list), key=lambda x: x[1], reverse=True)
         rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
         rec_set = set(rec)
@@ -289,12 +290,12 @@ def data_to_dict(training_data, min_rate):
             train_dict[user][item] = rate
     return train_dict
 
-train_dict = data_to_dict(train_male)
-test_dict = data_to_dict(test_male)
+train_dict = data_to_dict(train_male, 0)
+test_dict = data_to_dict(test_male, 0)
 
 precision_list, recall_list = [], []
 for k in [5, 10, 50]:
-    precision, recall = evaluate(recommend, test_dict, train_dict, top=k, mode='base').values[0]
+    precision, recall = evaluate(male_prediction, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)
 
