@@ -249,25 +249,15 @@ test_male = np.array([[male_index_dict[i[0]], female_index_dict[i[1]], i[2]]
 male_prediction = model.prediction_matrix()
 auc_test(male_prediction, train_male, test_male)
 
-def data_to_dict(training_data, min_rate):
-    train_dict = dict()
-    for row in training_data:
-        user, item, rate = row
-        if rate >= min_rate:
-            if user not in train_dict:
-                train_dict[user] = dict()
-            train_dict[user][item] = rate
-    return train_dict
 
-def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
+def evaluate(recommend, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
     tp, fp, fn = 0, 0, 0
     precision_recall_list = list()
     user_array = np.array(list(set(lable_dict.keys()) & set(train_dict.keys())))
     user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
     for exp in user_sample:
-        job_rank_dict = recommend_dict[exp]
-        job_rank = sorted(job_rank_dict.items(),
-                            key=lambda x: x[1], reverse=True)
+        job_rank_dict = recommend[exp]
+        job_rank = sorted(enumerate(job_rank_list), key=lambda x: x[1], reverse=True)
         rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
         rec_set = set(rec)
         positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
@@ -289,11 +279,22 @@ def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=
     elif mode == 'sum':
         return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
 
+def data_to_dict(training_data, min_rate):
+    train_dict = dict()
+    for row in training_data:
+        user, item, rate = row
+        if rate >= min_rate:
+            if user not in train_dict:
+                train_dict[user] = dict()
+            train_dict[user][item] = rate
+    return train_dict
 
+train_dict = data_to_dict(train_male)
+test_dict = data_to_dict(test_male)
 
 precision_list, recall_list = [], []
 for k in [5, 10, 50]:
-    precision, recall = evaluate(recommend, test_data, train_data, top=k, mode='base').values[0]
+    precision, recall = evaluate(recommend, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)
 
