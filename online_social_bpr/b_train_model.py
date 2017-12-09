@@ -30,22 +30,28 @@ female_to_index = dict(zip(female_set, range(len(female_set))))
 
 male_train, male_to_index, female_to_index = utils.load_data_from_array(
     male_train_raw, male_to_index, female_to_index)
-female_train, male_to_index, female_to_index = utils.load_data_from_array(
-    female_train_raw, male_to_index, female_to_index)
+# =============================================================================
+# female_train, male_to_index, female_to_index = utils.load_data_from_array(
+#     female_train_raw, male_to_index, female_to_index)
+# =============================================================================
 
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
 male_bpr.train(male_train, epochs=2000)
 
-female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
-              n_items=len(female_to_index), match_weight=1)
-
-female_bpr.train(female_train, epochs=2000)
+# =============================================================================
+# female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
+#               n_items=len(female_to_index), match_weight=1)
+# 
+# female_bpr.train(female_train, epochs=2000)
+# =============================================================================
 
 male_prediction = male_bpr.prediction_to_matrix()
-female_prediction = female_bpr.prediction_to_matrix()
-male_prediction_plus = male_prediction + female_prediction
+# =============================================================================
+# female_prediction = female_bpr.prediction_to_matrix()
+# male_prediction_plus = male_prediction + female_prediction
+# =============================================================================
 
 def auc_test(prediction_mat, train_data, test_data, s=0.3):
     def _data_to_dict(data):
@@ -109,8 +115,10 @@ female_test, male_to_index, female_to_index = utils.load_data_from_array(
     female_test_raw, male_to_index, female_to_index)
 
 auc_test(male_prediction, male_train, male_test)
-auc_test(female_prediction, female_train, female_test)
-auc_test(male_prediction_plus, male_train, male_test, 1)
+# =============================================================================
+# auc_test(female_prediction, female_train, female_test)
+# auc_test(male_prediction_plus, male_train, male_test, 1)
+# =============================================================================
 
 # =============================================================================
 # male_prediction_scale = preprocessing.scale(male_prediction, axis=1)
@@ -123,12 +131,16 @@ auc_test(male_prediction_plus, male_train, male_test, 1)
 # =============================================================================
 
 male_prediction_scale = np.argsort(np.argsort(male_prediction, axis=1))
-female_prediction_scale = np.argsort(np.argsort(female_prediction, axis=1))
-male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
+# =============================================================================
+# female_prediction_scale = np.argsort(np.argsort(female_prediction, axis=1))
+# male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
+# =============================================================================
 
 auc_test(male_prediction_scale, male_train, male_test)
-auc_test(female_prediction_scale, female_train, female_test)
-auc_test(male_prediction_plus_scale, male_train, male_test, 1)
+# =============================================================================
+# auc_test(female_prediction_scale, female_train, female_test)
+# auc_test(male_prediction_plus_scale, male_train, male_test, 1)
+# =============================================================================
 
 def auc(p_array, test_y, split):
     positive_index = [i[0] for i in enumerate(test_y) if i[1] >= split]
@@ -149,7 +161,7 @@ with open('input/male_test.csv') as file:
     test_data_ = pd.read_csv(file, header=None).values
 test_data = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2] // 100]
     for i in test_data_ if i[0] in male_to_index and i[1] in female_to_index])
-p_array = np.array(list(map(lambda x: male_prediction_plus_scale[x[0], x[1]], test_data)))
+p_array = np.array(list(map(lambda x: male_prediction_scale[x[0], x[1]], test_data)))
 test_y = test_data[:, 2]
 print(auc(p_array, test_y, 1))
 
@@ -198,7 +210,7 @@ def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=
         return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
 
 precision_list, recall_list = [], []
-for k in range(1, 50, 5):
+for k in [5, 10, 50]:
     precision, recall = evaluate(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)

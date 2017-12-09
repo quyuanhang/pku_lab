@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import datetime
 import tqdm
+import matplotlib.pyplot as plt
 
 train_file = 'input/match_train.csv'
 test_file = 'input/match_test.csv'
@@ -216,7 +217,7 @@ my_ibcf = IBCF(train_data, my_ucf, my_icf)
 recommend = my_ibcf.recommend_all(5)
 
 my_sri = SRI(train_data, test_data, recommend, 1)
-print(my_sri.SRI(5))
+print(my_sri.SRI(5), my_sri.SRI(10), my_sri.SRI(50))
 
 def auc(train_dict, rank_dict, test_dict):
     train_items = set()
@@ -273,6 +274,44 @@ test_y = test_data_[:, 2]
 print(auc_(p_array, test_y, 2))
         
 
+def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
+    tp, fp, fn = 0, 0, 0
+    precision_recall_list = list()
+    user_array = np.array(list(set(lable_dict.keys()) & set(train_dict.keys())))
+    user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
+    for exp in user_sample:
+        job_rank_dict = recommend_dict[exp]
+        job_rank = sorted(job_rank_dict.items(),
+                            key=lambda x: x[1], reverse=True)
+        rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
+        rec_set = set(rec)
+        positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
+        tp += len(rec_set & positive_set)
+        fp += len(rec_set - positive_set)
+        fn += len(positive_set - rec_set)
+        if len(positive_set) > 0:
+            if mode == 'max':
+                precision = 1 if rec_set & positive_set else 0
+                recall = 1 if rec_set & positive_set else 0
+            else:
+                precision = len(rec_set & positive_set) / (len(rec_set) + 0.01)
+                recall = len(rec_set & positive_set) / (len(positive_set) + 0.01)
+            precision_recall_list.append([precision, recall])
+    if (mode == 'base') or (mode == 'max'):
+        df = pd.DataFrame(precision_recall_list, columns=[
+                          'precision', 'recall'])
+        return pd.DataFrame([df.mean(), df.std()], index=['mean', 'std'])
+    elif mode == 'sum':
+        return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
+
+precision_list, recall_list = [], []
+for k in [5, 10, 50]:
+    precision, recall = evaluate(recommend, test_data, train_data, top=k, mode='base').values[0]
+    precision_list.append(precision)
+    recall_list.append(recall)
+
+plt.scatter(precision_list, recall_list)
+plt.show()
 
 
         

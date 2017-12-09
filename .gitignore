@@ -94,3 +94,4 @@ ENV/
 *.json
 *.dat
 *.csv
+.spyproject/workspace.ini

@@ -215,7 +215,7 @@ print('male positive num', len(male_posi_data))
 print('female positive num', len(female_posi_data))
 
 # 划分数据
-# match_frame['rate'] = 2
+match_frame['rate'] = 2
 
 print('male bsr', len(match_frame) / len(male_posi_data))
 print('female bsr', len(match_frame) / len(female_posi_data))
@@ -225,19 +225,19 @@ match_train, match_test = train_test_split(match_frame, test_size=0.2)
 match_train.to_csv('input/match_train.csv', index=False, header=False)
 match_test.to_csv('input/match_test.csv', index=False, header=False)
 
-# male_posi_train, male_posi_test = train_test_split(
-#     male_posi_data, test_size=0.2)
-# female_posi_train, female_posi_test = train_test_split(
-#     female_posi_data, test_size=0.2)
-# male_train = pd.concat([match_train, male_posi_train])
-# male_test = pd.concat([match_test, male_posi_test])
-# female_train = pd.concat([match_train, female_posi_train])
-# female_test = pd.concat([match_test, female_posi_test])
+male_posi_train, male_posi_test = train_test_split(
+    male_posi_data, test_size=0.2)
+female_posi_train, female_posi_test = train_test_split(
+    female_posi_data, test_size=0.2)
+male_train = pd.concat([match_train, male_posi_train])
+male_test = pd.concat([match_test, male_posi_test])
+female_train = pd.concat([match_train, female_posi_train])
+female_test = pd.concat([match_test, female_posi_test])
 
-# male_train.to_csv('input/male_train.csv', index=False, header=False)
-# male_test.to_csv('input/male_test.csv', index=False, header=False)
-# female_train.to_csv('input/female_train.csv', index=False, header=False)
-# female_test.to_csv('input/female_test.csv', index=False, header=False)
+male_train.to_csv('input/male_train.csv', index=False, header=False)
+male_test.to_csv('input/male_test.csv', index=False, header=False)
+female_train.to_csv('input/female_train.csv', index=False, header=False)
+female_test.to_csv('input/female_test.csv', index=False, header=False)
 
 
 # 整理字典
