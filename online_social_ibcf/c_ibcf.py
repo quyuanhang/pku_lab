@@ -8,7 +8,7 @@ import tqdm
 import matplotlib.pyplot as plt
 
 train_file = 'input/match_train.csv'
-test_file = 'input/match_test.csv'
+test_file = 'input/male_test.csv'
 
 
 def read_file(file_name):
