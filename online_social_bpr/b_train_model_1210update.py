@@ -12,7 +12,6 @@ sys.path.append('theano_bpr/')
 import matplotlib.pylab as plt
 import pandas as pd
 import numpy as np
-from sklearn import preprocessing
 # 本地库
 import utils
 import bpr
@@ -21,7 +20,9 @@ import test
 male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
 female_train_raw = pd.read_csv('input/female_train.csv', header=None).values
 female_train_posi = female_train_raw[female_train_raw[:, 2]>=2]
-male_train_raw = np.r_[male_train_raw, female_train_posi]
+# =============================================================================
+# male_train_raw = np.r_[male_train_raw, female_train_posi]
+# =============================================================================
 
 
 male_set = set(male_train_raw[:, 0]) & set(female_train_raw[:, 0])
@@ -35,13 +36,15 @@ male_train, male_to_index, female_to_index = utils.load_data_from_array(
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=100)
+male_bpr.train(male_train, epochs=5000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 
 
 male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
+# =============================================================================
 # male_test_raw[:, 2] = 2 #计算单边auc
+# =============================================================================
 
 male_test, male_to_index, female_to_index = utils.load_data_from_array(
     male_test_raw, male_to_index, female_to_index)
@@ -77,6 +80,11 @@ for k in [5, 10, 50]:
     precision, recall = test.precision_recall(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)
+    
+cover_list = []
+for k in [5, 10, 50]:
+    cover = test.coverage(pre_dict, np.array(male_test), k)
+    cover_list.append(cover)
 
 plt.scatter(precision_list, recall_list)
 plt.show()

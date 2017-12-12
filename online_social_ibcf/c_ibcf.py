@@ -3,12 +3,12 @@ import json
 import collections
 import numpy as np
 import pandas as pd
-import datetime
 import tqdm
+import heapq
 import matplotlib.pyplot as plt
 
-train_file = 'input/match_train.csv'
-test_file = 'input/match_test.csv'
+train_file = 'input/male_train.csv'
+test_file = 'input/male_test.csv'
 
 
 def read_file(file_name):
@@ -199,22 +199,18 @@ class SRI(object):
         return sri 
 
 train_frame = pd.read_csv(train_file, header=None)
-# =============================================================================
-# train_frame = train_frame.reindex(columns=[1,0,2])
-# =============================================================================
+train_frame = train_frame[train_frame.iloc[:, 2]==2]
 train_data = frame_to_dict(train_frame, user_index=0)
 test_frame = pd.read_csv(test_file, header=None)
-# =============================================================================
-# test_frame = test_frame.reindex(columns=[1,0,2])
-# =============================================================================
+test_frame = test_frame[test_frame.iloc[:, 2]==2]
 test_data = frame_to_dict(test_frame, user_index=0)
 
 my_ucf = UserBasedCF(train_data)
-recommend = my_ucf.recommend_all(5)
+recommend = my_ucf.recommend_all(100)
 my_icf = ItemBasedCF(train_data)
-recommend = my_icf.recommend_all(5)
+recommend = my_icf.recommend_all(100)
 my_ibcf = IBCF(train_data, my_ucf, my_icf)
-recommend = my_ibcf.recommend_all(5)
+recommend = my_ibcf.recommend_all(100)
 
 my_sri = SRI(train_data, test_data, recommend, 1)
 print(my_sri.SRI(5), my_sri.SRI(10), my_sri.SRI(50))
@@ -252,33 +248,38 @@ def auc(train_dict, rank_dict, test_dict):
 
 print(auc(train_data, recommend, test_data))
 
-def auc_(p_array, test_y, split):
-    positive_index = [i[0] for i in enumerate(test_y) if i[1] >= split]
-    negative_index = [i[0] for i in enumerate(test_y) if i[1] < split]
-    positive_score = p_array[positive_index]
-    negative_score = p_array[negative_index]
-    auc = 0.0
-    for pos_s in positive_score:
-        for neg_s in negative_score:
-            if pos_s > neg_s:
-                auc += 1
-            if pos_s == neg_s:
-                auc += 0.5
-    auc /= (len(positive_score) * len(negative_score))
-    return auc
-
-with open('input/male_test.csv') as file:
-    test_data_ = pd.read_csv(file, header=None).values
-p_array = np.array(list(map(lambda x: recommend[x[0]][x[1]] if x[0] in recommend and x[1] in recommend[x[0]] else 0, test_data_)))
-test_y = test_data_[:, 2]
-print(auc_(p_array, test_y, 2))
+# =============================================================================
+# def auc_(p_array, test_y, split):
+#     positive_index = [i[0] for i in enumerate(test_y) if i[1] >= split]
+#     negative_index = [i[0] for i in enumerate(test_y) if i[1] < split]
+#     positive_score = p_array[positive_index]
+#     negative_score = p_array[negative_index]
+#     auc = 0.0
+#     for pos_s in positive_score:
+#         for neg_s in negative_score:
+#             if pos_s > neg_s:
+#                 auc += 1
+#             if pos_s == neg_s:
+#                 auc += 0.5
+#     auc /= (len(positive_score) * len(negative_score))
+#     return auc
+# 
+# with open(test_file) as file:
+#     test_data_ = pd.read_csv(file, header=None).values
+# p_array = np.array(list(map(lambda x: recommend[x[0]][x[1]] if x[0] in recommend and x[1] in recommend[x[0]] else 0, test_data_)))
+# test_y = test_data_[:, 2]
+# print(auc_(p_array, test_y, 2))
+# =============================================================================
         
 
 def evaluate(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
     tp, fp, fn = 0, 0, 0
     precision_recall_list = list()
     user_array = np.array(list(set(lable_dict.keys()) & set(train_dict.keys())))
-    user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
+# =============================================================================
+#     user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
+# =============================================================================
+    user_sample = user_array
     for exp in user_sample:
         job_rank_dict = recommend_dict[exp]
         job_rank = sorted(job_rank_dict.items(),
@@ -313,6 +314,18 @@ for k in [5, 10, 50]:
 plt.scatter(precision_list, recall_list)
 plt.show()
 
+def coverage(recommend_dict, train_data, top=100):
+    covered_user = set()
+    for u, v_r in recommend_dict.items():
+        curent_coverd_user_rate = heapq.nlargest(top, v_r.items(), key=lambda x: x[1])
+        curent_coverd_user = [i[0] for i in curent_coverd_user_rate]
+        covered_user = covered_user | set(curent_coverd_user)
+    all_user = set(train_data[:, 1])
+    cover = len(covered_user & all_user) / len(all_user)
+    return cover
 
-        
-        
+cover_list = []
+for k in [5, 10, 50]:
+    cover = coverage(recommend, train_frame.values, k)
+    cover_list.append(cover)
+

@@ -1,10 +1,10 @@
 import sys, time
-import tensorflow as tf
 import pandas as pd
 import numpy as np
-from scipy import sparse
 import DYP
 import test
+from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 
 train_male = pd.read_csv('input/male_train.csv', header=None).values
@@ -27,7 +27,7 @@ begin = time.time()
 l_loss = 0
 i = 0
 stop = 0
-for i in tqdm(range(500)):
+for i in tqdm(range(2000)):
     c_loss = model.partial_fit(train_male[:, [0, 1]], train_male[:, [2]], 
                         train_female[:, [0, 1]], train_female[:, [2]])    
     if abs(c_loss - l_loss) == 0:
@@ -37,23 +37,36 @@ for i in tqdm(range(500)):
     if stop >= 100:
         break
     l_loss = c_loss
-    sys.stderr.write(("loss function %f" % (c_loss)))
-    sys.stderr.flush()
+# =============================================================================
+#     sys.stderr.write(("/r loss function %f" % (c_loss)))
+#     sys.stderr.flush()
+# =============================================================================
     i += 1
 
 male_prediction = model.prediction_matrix()
 
 test_data = pd.read_csv('input/male_test.csv', header=None).values
-# male_test_raw[:, 2] = 2 #计算单边auc
+# =============================================================================
+# test_data[:, 2] = 2 #计算单边auc
+# =============================================================================
 
 
 test_data = np.array([[male_index_dict[i[0]], female_index_dict[i[1]], i[2]]
     for i in test_data if i[0] in male_index_dict and i[1] in female_index_dict])
 test.user_auc(male_prediction, train_male, test_data)
 
-p_array = np.array(list(map(lambda x: male_prediction[x[0], x[1]], test_data)))
+p_array = list()
+for row in test_data:
+    p_array.append(male_prediction[row[0], row[1]])
+p_array = np.array(p_array)
+
+# =============================================================================
+# p_array = np.array(list(map(lambda x: male_prediction[np.asscalar(x[0]), np.asscalar(x[1])], test_data)))
+# =============================================================================
 test_y = test_data[:, 2]
-print(test.sample_auc(p_array, test_y, 1))
+# =============================================================================
+# print(test.sample_auc(p_array, test_y, 2))
+# =============================================================================
 
 
 train_dict = test.data_to_dict(train_male, 0)

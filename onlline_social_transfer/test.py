@@ -19,7 +19,7 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
                     pos_dict[user] = list()
                 pos_dict[user].append(item)
             all_items.add(item)
-        return match_dict, pos_dict, (set(match_dict.keys()) & set(pos_dict.keys())), all_items
+        return match_dict, pos_dict, set(match_dict.keys()), all_items
     train_match_dict, train_pos_dict, train_users, train_items = _data_to_dict(train_data)    
     test_match_dict, test_pos_dict, test_users, test_items = _data_to_dict(test_data)
     auc_values = []

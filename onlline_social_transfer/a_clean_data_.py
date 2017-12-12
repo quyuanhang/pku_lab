@@ -225,8 +225,11 @@ female_posi_train, female_posi_test = train_test_split(female_posi_data)
 
 male_train = pd.concat([match_train, male_posi_train])
 female_train = pd.concat([match_train, female_posi_train])
-test = match_test
+
+match_test['rate'] = 2
+male_posi_test['rate'] = 1
+male_test = pd.concat([match_test, male_posi_test])
 
 male_train.to_csv('input/male_train.csv', index=False, header=False)
 female_train.to_csv('input/female_train.csv', index=False, header=False)
-test.to_csv('input/test.csv', index=False, header=False)
+male_test.to_csv('input/male_test.csv', index=False, header=False)

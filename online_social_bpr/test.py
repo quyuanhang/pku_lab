@@ -3,6 +3,7 @@ import sys
 # 第三方库
 import pandas as pd
 import numpy as np
+import heapq
 
 
 def user_auc(prediction_mat, train_data, test_data, s=0.3):
@@ -20,7 +21,7 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
                     pos_dict[user] = list()
                 pos_dict[user].append(item)
             all_items.add(item)
-        return match_dict, pos_dict, (set(match_dict.keys()) & set(pos_dict.keys())), all_items
+        return match_dict, pos_dict, set(match_dict.keys()), all_items
     train_match_dict, train_pos_dict, train_users, train_items = _data_to_dict(train_data)    
     test_match_dict, test_pos_dict, test_users, test_items = _data_to_dict(test_data)
     auc_values = []
@@ -35,6 +36,7 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
         n = 0
         predictions = prediction_mat[user]
         match_items = set(test_match_dict[user]) & train_items - set(train_match_dict[user])
+        test_pos_dict.setdefault(user, {})
         pos_items = set(test_pos_dict[user]) & train_items - set(train_pos_dict[user])
         neg_items = train_items - match_items - pos_items - set(train_pos_dict[user]) - set(train_match_dict[user])
         for match_item in match_items:
@@ -76,7 +78,10 @@ def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='bas
     tp, fp, fn = 0, 0, 0
     precision_recall_list = list()
     user_array = np.array(list(set(lable_dict.keys()) & set(train_dict.keys())))
-    user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
+# =============================================================================
+#     user_sample = user_array[np.random.randint(len(user_array), size=round(sam * len(user_array)))]
+# =============================================================================
+    user_sample = user_array
     for exp in user_sample:
         job_rank_dict = recommend_dict[exp]
         job_rank = sorted(job_rank_dict.items(),
@@ -101,3 +106,14 @@ def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='bas
         return pd.DataFrame([df.mean(), df.std()], index=['mean', 'std'])
     elif mode == 'sum':
         return ('precision, recall \n %f, %f' % ((tp / (tp + fp)), (tp / (tp + fn))))
+
+def coverage(recommend_dict, train_data, top=100):
+    covered_user = set()
+    for u, v_r in recommend_dict.items():
+        curent_coverd_user_rate = heapq.nlargest(top, v_r.items(), key=lambda x: x[1])
+        curent_coverd_user = [i[0] for i in curent_coverd_user_rate]
+        covered_user = covered_user | set(curent_coverd_user)
+    cover = len(covered_user) / len(set(train_data[:, 1]))
+    return cover
+
+
