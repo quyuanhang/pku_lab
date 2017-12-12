@@ -96,3 +96,4 @@ ENV/
 *.csv
 .spyproject/workspace.ini
 .spyproject/workspace.ini
+*.ini
