@@ -7,8 +7,8 @@ import tqdm
 import heapq
 import matplotlib.pyplot as plt
 
-train_file = 'input/male_train.csv'
-test_file = 'input/male_test.csv'
+train_file = 'input/female_train.csv'
+test_file = 'input/female_test.csv'
 
 
 def read_file(file_name):
@@ -200,9 +200,11 @@ class SRI(object):
 
 train_frame = pd.read_csv(train_file, header=None)
 train_frame = train_frame[train_frame.iloc[:, 2]==2]
+train_frame = train_frame.iloc[:, [1,0,2]]
 train_data = frame_to_dict(train_frame, user_index=0)
 test_frame = pd.read_csv(test_file, header=None)
 test_frame = test_frame[test_frame.iloc[:, 2]==2]
+test_frame = test_frame.iloc[:, [1,0,2]]
 test_data = frame_to_dict(test_frame, user_index=0)
 
 my_ucf = UserBasedCF(train_data)

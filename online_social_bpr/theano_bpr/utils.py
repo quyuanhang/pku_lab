@@ -76,7 +76,7 @@ def load_data_from_array(array, users_to_i = {}, items_to_i = {}):
       and a mapping from item ids to integers.
     """
     data = []
-    if len(users_to_i.values()) == 0:
+    if len(users_to_i) == 0:
         u = 0
         i = 0
         for user, item, rate in array:
