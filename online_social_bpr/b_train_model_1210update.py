@@ -17,8 +17,10 @@ import utils
 import bpr
 import test
 
-male_train_raw = pd.read_csv('input/female_train.csv', header=None).values
-male_train_raw = male_train_raw[:, [1,0,2]]
+male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+# =============================================================================
+# male_train_raw = male_train_raw[:, [1,0,2]]
+# =============================================================================
 female_train_raw = pd.read_csv('input/male_train.csv', header=None).values
 female_train_posi = female_train_raw[female_train_raw[:, 2]>=2]
 # =============================================================================
@@ -26,8 +28,8 @@ female_train_posi = female_train_raw[female_train_raw[:, 2]>=2]
 # =============================================================================
 
 
-male_set = set(male_train_raw[:, 0]) & set(female_train_raw[:, 0])
-female_set = set(male_train_raw[:, 1]) & set(female_train_raw[:, 1])
+male_set = set(male_train_raw[:, 0])
+female_set = set(male_train_raw[:, 1])
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
 
@@ -42,8 +44,10 @@ male_bpr.train(male_train, epochs=3000)
 male_prediction = male_bpr.prediction_to_matrix()
 
 
-male_test_raw = pd.read_csv('input/female_test.csv', header=None).values
-male_test_raw = male_test_raw[:, [1,0,2]]
+male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
+# =============================================================================
+# male_test_raw = male_test_raw[:, [1,0,2]]
+# =============================================================================
 # =============================================================================
 # male_test_raw[:, 2] = 2 #计算单边auc
 # =============================================================================
@@ -80,7 +84,7 @@ pre_dict = male_bpr.prediction_to_dict(100)
 
 
 precision_list, recall_list = [], []
-for k in [5, 10, 50]:
+for k in [1, 5, 10, 50]:
     precision, recall = test.precision_recall(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)

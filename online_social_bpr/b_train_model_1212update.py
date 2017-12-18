@@ -18,18 +18,16 @@ import utils
 import bpr
 import test
 
-male_train_raw = pd.read_csv('input/female_train.csv', header=None).values
-female_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+female_train_raw = pd.read_csv('input/female_train.csv', header=None).values
 
 male_train_match = male_train_raw[male_train_raw[:, 2]==2]
 
-# =============================================================================
-# male_set = set(male_train_raw[male_train_raw[:, 2]][:, 0]) & set(female_train_raw[:, 0])
-# female_set = set(male_train_raw[:, 1]) & set(female_train_raw[:, 1])
-# =============================================================================
+male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
+male_test_match = male_test_raw[male_test_raw[:, 2]==2]
 
 male_set = set(male_train_match[:, 0])
-female_set = set(male_train_match[:, 1])
+female_set = set(male_train_raw[:, 1])
 
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
@@ -38,19 +36,16 @@ male_train, male_to_index, female_to_index = utils.load_data_from_array(
     male_train_raw, male_to_index, female_to_index)
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
-male_bpr.train(male_train, epochs=1000)
+male_bpr.train(male_train, epochs=3000)
 
 female_train, male_to_index, female_to_index = utils.load_data_from_array(
     female_train_raw, male_to_index, female_to_index)
 female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
-female_bpr.train(female_train, epochs=1000)
+female_bpr.train(female_train, epochs=3000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 female_prediction = female_bpr.prediction_to_matrix()
-# =============================================================================
-# male_prediction_plus = male_prediction + female_prediction
-# =============================================================================
 
 male_prediction_scale = np.argsort(np.argsort(male_prediction, axis=1))
 female_prediction_scale = np.argsort(np.argsort(female_prediction, axis=1))
@@ -58,7 +53,6 @@ male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
 
 
 
-male_test_raw = pd.read_csv('input/female_test.csv', header=None).values
 # =============================================================================
 # male_test_raw[:, 2] = 2 #计算单边auc
 # =============================================================================
