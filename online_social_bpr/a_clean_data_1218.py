@@ -199,11 +199,11 @@ print('female positive num', len(female_posi_data))
 # 划分数据
 old_match_frame['rate'] = 2
 
-match_train, match_test = train_test_split(old_match_frame, test_size=0.2)
+match_train, match_test = train_test_split(old_match_frame, test_size=0.5)
 male_posi_train, male_posi_test = train_test_split(
-    male_posi_data, test_size=0.2)
+    male_posi_data, test_size=0.5)
 female_posi_train, female_posi_test = train_test_split(
-    female_posi_data, test_size=0.2)
+    female_posi_data, test_size=0.5)
 male_train = pd.concat([match_train, male_posi_train])
 male_test = pd.concat([match_test, male_posi_test])
 female_train = pd.concat([match_train, female_posi_train])

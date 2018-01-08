@@ -9,8 +9,11 @@ import matplotlib.pyplot as plt
 
 train_male = pd.read_csv('input/male_train.csv', header=None).values
 train_female = pd.read_csv('input/female_train.csv', header=None).values
-male_set = set(train_male[:, 0]) & set(train_female[:, 0])
-female_set = set(train_male[:, 1]) & set(train_female[:, 1])
+
+male_train_match = train_male[train_male[:, 2]==2]
+
+male_set = set(male_train_match[:, 0])
+female_set = set(male_train_match[:, 1])
 male_index_dict = dict(zip(male_set, range(len(male_set))))
 female_index_dict = dict(zip(female_set, range(len(female_set))))
 
@@ -55,16 +58,14 @@ test_data = np.array([[male_index_dict[i[0]], female_index_dict[i[1]], i[2]]
     for i in test_data if i[0] in male_index_dict and i[1] in female_index_dict])
 test.user_auc(male_prediction, train_male, test_data)
 
-p_array = list()
-for row in test_data:
-    p_array.append(male_prediction[row[0], row[1]])
-p_array = np.array(p_array)
-
 # =============================================================================
+# p_array = list()
+# for row in test_data:
+#     p_array.append(male_prediction[row[0], row[1]])
+# p_array = np.array(p_array)
+# 
 # p_array = np.array(list(map(lambda x: male_prediction[np.asscalar(x[0]), np.asscalar(x[1])], test_data)))
-# =============================================================================
-test_y = test_data[:, 2]
-# =============================================================================
+# test_y = test_data[:, 2]
 # print(test.sample_auc(p_array, test_y, 2))
 # =============================================================================
 

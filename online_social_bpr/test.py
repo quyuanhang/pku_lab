@@ -27,10 +27,8 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
     auc_values = []
     z = 0
     user_array = np.array(list(test_users & train_users))
-    user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
-# =============================================================================
-#     user_sample = user_array
-# =============================================================================
+    if s < 1:
+        user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
     for user in user_sample:
         auc_for_user = 0.0
         n = 0
@@ -38,7 +36,9 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
         match_items = set(test_match_dict[user]) & train_items - set(train_match_dict[user])
         test_pos_dict.setdefault(user, {})
         pos_items = set(test_pos_dict[user]) & train_items - set(train_pos_dict[user] if user in train_pos_dict else ())
-        neg_items = train_items - match_items - pos_items - set(train_pos_dict[user]) - set(train_match_dict[user])
+        neg_items = train_items - match_items - pos_items -\
+                    set(train_pos_dict[user] if user in train_pos_dict else ()) -\
+                    set(train_match_dict[user])
         for match_item in match_items:
             for other_item in pos_items | neg_items:
                 n += 1

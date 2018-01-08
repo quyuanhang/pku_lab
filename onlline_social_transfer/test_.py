@@ -3,8 +3,6 @@ import sys
 # 第三方库
 import pandas as pd
 import numpy as np
-import heapq
-
 
 def user_auc(prediction_mat, train_data, test_data, s=0.3):
     def _data_to_dict(data):
@@ -16,7 +14,7 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
                 if user not in match_dict:
                     match_dict[user] = list()
                 match_dict[user].append(item)
-            if rate == 1:
+            else:
                 if user not in pos_dict:
                     pos_dict[user] = list()
                 pos_dict[user].append(item)
@@ -27,18 +25,17 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
     auc_values = []
     z = 0
     user_array = np.array(list(test_users & train_users))
-    if s < 1:
-        user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
+    user_sample = user_array[np.random.randint(len(user_array), size=round(s * len(user_array)))]
+# =============================================================================
+#     user_sample = user_array
+# =============================================================================
     for user in user_sample:
         auc_for_user = 0.0
         n = 0
         predictions = prediction_mat[user]
         match_items = set(test_match_dict[user]) & train_items - set(train_match_dict[user])
-        test_pos_dict.setdefault(user, {})
-        pos_items = set(test_pos_dict[user]) & train_items - set(train_pos_dict[user] if user in train_pos_dict else ())
-        neg_items = train_items - match_items - pos_items -\
-                    set(train_pos_dict[user] if user in train_pos_dict else ()) -\
-                    set(train_match_dict[user])
+        pos_items = set(test_pos_dict[user]) & train_items - set(train_pos_dict[user])
+        neg_items = train_items - match_items - pos_items - set(train_pos_dict[user]) - set(train_match_dict[user])
         for match_item in match_items:
             for other_item in pos_items | neg_items:
                 n += 1
@@ -57,7 +54,6 @@ def user_auc(prediction_mat, train_data, test_data, s=0.3):
     sys.stderr.flush()
     return np.mean(auc_values)
 
-
 def sample_auc(p_array, test_y, split):
     positive_index = [i[0] for i in enumerate(test_y) if i[1] >= split]
     negative_index = [i[0] for i in enumerate(test_y) if i[1] < split]
@@ -72,7 +68,6 @@ def sample_auc(p_array, test_y, split):
                 auc += 0.5
     auc /= (len(positive_score) * len(negative_score))
     return auc
-
 
 def precision_recall(recommend, lable_dict, train_dict, top=1000, mode='base', sam=0.3):
     tp, fp, fn = 0, 0, 0
@@ -112,4 +107,3 @@ def data_to_dict(training_data, min_rate):
                 train_dict[user] = dict()
             train_dict[user][item] = rate
     return train_dict
-

@@ -17,13 +17,13 @@ import utils
 import bpr
 import test
 
-male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+male_train_raw = pd.read_csv('input/train.csv', header=None).values
 # =============================================================================
 # male_train_raw = male_train_raw[:, [1,0,2]]
 # =============================================================================
-female_train_raw = pd.read_csv('input/male_train.csv', header=None).values
-female_train_posi = female_train_raw[female_train_raw[:, 2]>=2]
 # =============================================================================
+# female_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+# female_train_posi = female_train_raw[female_train_raw[:, 2]>=2]
 # male_train_raw = np.r_[male_train_raw, female_train_posi]
 # =============================================================================
 
@@ -44,7 +44,7 @@ male_bpr.train(male_train, epochs=3000)
 male_prediction = male_bpr.prediction_to_matrix()
 
 
-male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
+male_test_raw = pd.read_csv('input/test.csv', header=None).values
 # =============================================================================
 # male_test_raw = male_test_raw[:, [1,0,2]]
 # =============================================================================
@@ -84,7 +84,7 @@ pre_dict = male_bpr.prediction_to_dict(100)
 
 
 precision_list, recall_list = [], []
-for k in [1, 5, 10, 50]:
+for k in range(1, 100, 5):
     precision, recall = test.precision_recall(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)

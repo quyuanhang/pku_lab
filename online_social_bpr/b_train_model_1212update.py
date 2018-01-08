@@ -26,7 +26,7 @@ male_train_match = male_train_raw[male_train_raw[:, 2]==2]
 male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
 male_test_match = male_test_raw[male_test_raw[:, 2]==2]
 
-male_set = set(male_train_match[:, 0])
+male_set = set(male_train_raw[:, 0])
 female_set = set(male_train_raw[:, 1])
 
 male_to_index = dict(zip(male_set, range(len(male_set))))
@@ -36,13 +36,13 @@ male_train, male_to_index, female_to_index = utils.load_data_from_array(
     male_train_raw, male_to_index, female_to_index)
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
-male_bpr.train(male_train, epochs=3000)
+male_bpr.train(male_train, epochs=5000)
 
 female_train, male_to_index, female_to_index = utils.load_data_from_array(
     female_train_raw, male_to_index, female_to_index)
 female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
-female_bpr.train(female_train, epochs=3000)
+female_bpr.train(female_train, epochs=5000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 female_prediction = female_bpr.prediction_to_matrix()
@@ -60,7 +60,7 @@ male_prediction_plus_scale = male_prediction_scale + female_prediction_scale
 male_test, male_to_index, female_to_index = utils.load_data_from_array(
     male_test_raw, male_to_index, female_to_index)
 
-# test.user_auc(male_prediction, male_train, male_test)
+test.user_auc(male_prediction, male_train, male_test)
 
 
 
@@ -83,7 +83,7 @@ def mat_to_dict(mat, topn):
         d[i] = dict(heapq.nlargest(topn, enumerate(row), key=lambda x: x[1]))
     return d
 
-pre_dict = mat_to_dict(male_prediction_plus_scale, 50)
+pre_dict = mat_to_dict(male_prediction, 50)
 
 
 precision_list, recall_list = [], []
