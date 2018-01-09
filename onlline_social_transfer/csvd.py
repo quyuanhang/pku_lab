@@ -7,8 +7,8 @@ from tqdm import tqdm
 import matplotlib.pyplot as plt
 
 
-train_male = pd.read_csv('input/male_train.csv', header=None).values
-train_female = pd.read_csv('input/female_train.csv', header=None).values
+train_male = pd.read_csv('../public_data/male_train.csv', header=None).values
+train_female = pd.read_csv('../public_data/female_train.csv', header=None).values
 
 male_train_match = train_male[train_male[:, 2]==2]
 
@@ -48,7 +48,7 @@ for i in tqdm(range(2000)):
 
 male_prediction = model.prediction_matrix()
 
-test_data = pd.read_csv('input/male_test.csv', header=None).values
+test_data = pd.read_csv('../public_data/male_test.csv', header=None).values
 # =============================================================================
 # test_data[:, 2] = 2 #计算单边auc
 # =============================================================================
@@ -70,11 +70,11 @@ test.user_auc(male_prediction, train_male, test_data)
 # =============================================================================
 
 
-train_dict = test.data_to_dict(train_male, 0)
-test_dict = test.data_to_dict(test_data, 0)
+train_dict = test.data_to_dict(train_male, 2)
+test_dict = test.data_to_dict(test_data, 2)
 
 precision_list, recall_list = [], []
-for k in [5, 10, 50]:
+for k in range(5, 100, 5):
     precision, recall = test.precision_recall(male_prediction, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)

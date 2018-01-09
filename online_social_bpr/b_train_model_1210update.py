@@ -17,24 +17,29 @@ import utils
 import bpr
 import test
 
-male_train_raw = pd.read_csv('input/train.csv', header=None).values
+male_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).values
 # =============================================================================
 # male_train_raw = male_train_raw[:, [1,0,2]]
 # =============================================================================
 # =============================================================================
-# female_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+# female_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).values
 # female_train_posi = female_train_raw[female_train_raw[:, 2]>=2]
 # male_train_raw = np.r_[male_train_raw, female_train_posi]
 # =============================================================================
 
 
-male_set = set(male_train_raw[:, 0])
+male_set = set(male_train_raw[male_train_raw[:, 2]==2, 0])
 female_set = set(male_train_raw[:, 1])
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
 
-male_train, male_to_index, female_to_index = utils.load_data_from_array(
-    male_train_raw, male_to_index, female_to_index)
+male_train = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2]]
+    for i in male_train_raw if i[0] in male_to_index and i[1] in female_to_index])
+
+# =============================================================================
+# male_train, male_to_index, female_to_index = utils.load_data_from_array(
+#     male_train_raw, male_to_index, female_to_index)
+# =============================================================================
 
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
@@ -44,7 +49,7 @@ male_bpr.train(male_train, epochs=3000)
 male_prediction = male_bpr.prediction_to_matrix()
 
 
-male_test_raw = pd.read_csv('input/test.csv', header=None).values
+male_test_raw = pd.read_csv('../public_data/male_test.csv', header=None).values
 # =============================================================================
 # male_test_raw = male_test_raw[:, [1,0,2]]
 # =============================================================================
@@ -52,14 +57,20 @@ male_test_raw = pd.read_csv('input/test.csv', header=None).values
 # male_test_raw[:, 2] = 2 #计算单边auc
 # =============================================================================
 
-male_test, male_to_index, female_to_index = utils.load_data_from_array(
-    male_test_raw, male_to_index, female_to_index)
+# =============================================================================
+# male_test, male_to_index, female_to_index = utils.load_data_from_array(
+#     male_test_raw, male_to_index, female_to_index)
+# =============================================================================
+
+male_test = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2]]
+    for i in male_test_raw if i[0] in male_to_index and i[1] in female_to_index])
+
 
 test.user_auc(male_prediction, male_train, male_test)
 
 
 # =============================================================================
-# with open('input/female_test.csv') as file:
+# with open('../public_data/female_test.csv') as file:
 #     test_data_ = pd.read_csv(file, header=None).values
 # test_data = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2]]
 #     for i in test_data_ if i[0] in male_to_index and i[1] in female_to_index])
@@ -84,7 +95,7 @@ pre_dict = male_bpr.prediction_to_dict(100)
 
 
 precision_list, recall_list = [], []
-for k in range(1, 100, 5):
+for k in range(5, 100, 5):
     precision, recall = test.precision_recall(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)

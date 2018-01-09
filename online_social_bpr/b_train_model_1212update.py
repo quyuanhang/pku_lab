@@ -18,15 +18,15 @@ import utils
 import bpr
 import test
 
-male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
-female_train_raw = pd.read_csv('input/female_train.csv', header=None).values
+male_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).values
+female_train_raw = pd.read_csv('../public_data/female_train.csv', header=None).values
 
 male_train_match = male_train_raw[male_train_raw[:, 2]==2]
 
-male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
+male_test_raw = pd.read_csv('../public_data/male_test.csv', header=None).values
 male_test_match = male_test_raw[male_test_raw[:, 2]==2]
 
-male_set = set(male_train_raw[:, 0])
+male_set = set(male_train_raw[male_train_raw[:, 2]==2, 0])
 female_set = set(male_train_raw[:, 1])
 
 male_to_index = dict(zip(male_set, range(len(male_set))))
@@ -36,13 +36,13 @@ male_train, male_to_index, female_to_index = utils.load_data_from_array(
     male_train_raw, male_to_index, female_to_index)
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
-male_bpr.train(male_train, epochs=5000)
+male_bpr.train(male_train, epochs=3000)
 
 female_train, male_to_index, female_to_index = utils.load_data_from_array(
     female_train_raw, male_to_index, female_to_index)
 female_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
-female_bpr.train(female_train, epochs=5000)
+female_bpr.train(female_train, epochs=3000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 female_prediction = female_bpr.prediction_to_matrix()
@@ -87,7 +87,7 @@ pre_dict = mat_to_dict(male_prediction, 50)
 
 
 precision_list, recall_list = [], []
-for k in [5, 10, 50]:
+for k in range(5, 100, 5):
     precision, recall = test.precision_recall(pre_dict, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)

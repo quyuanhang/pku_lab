@@ -97,7 +97,7 @@ def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='bas
                 precision = 1 if rec_set & positive_set else 0
                 recall = 1 if rec_set & positive_set else 0
             else:
-                precision = len(rec_set & positive_set) / len(rec_set)
+                precision = len(rec_set & positive_set) / (len(rec_set)+0.1)
                 recall = len(rec_set & positive_set) / len(positive_set)
             precision_recall_list.append([precision, recall])
     if (mode == 'base') or (mode == 'max'):
