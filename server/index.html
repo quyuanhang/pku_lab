@@ -47,7 +47,7 @@
             var margin = {top: 10, right: 10, bottom: 10, left: 10},                  
                 height = $('#sankey_table').get(0).clientHeight - margin.top - margin.bottom,
                 width =  height * 60;
-            console.log(height, width)
+            // console.log(height, width)
 
             var svg = d3.select("body").select("svg")
                 .attr("width", width)  
@@ -67,14 +67,14 @@
 
             // 路径数据生成器
             var path = sankey.link();
-            console.log(path)
+            // console.log(path)
 
             // 绘制连接数据
             var links = svg.append("g").selectAll("path")
                         .data(data.links)
                         .enter()
 
-            console.log(links)
+            // console.log(links)
 
             // 绑定节点数据
             var nodes = svg.append("g").selectAll(".node")
@@ -86,7 +86,7 @@
                 .attr({
                     "fill": "none",   //填充色
                     'stroke': function(d,i){ return color(d.category); },  //描边色
-                    "stroke-opacity": 0.5,  //描边透明度
+                    "stroke-opacity": 0.05,  //描边透明度
                     'd': path,  //路径数据
                     'id': function(d,i){ return 'link' +i }  //ID
                 })
@@ -151,6 +151,10 @@
                     // .attr("opacity", 0.1)
                     .attr("font-size", height / 20)
                     .text(function(d){return d.year})
+                    .on('click', function(d, i){
+                        var year = d.year
+                        //
+                    })
 
 
             // // 绘制连接文本
@@ -430,8 +434,8 @@
                     .attr("x", x(extent[0]))
                     .attr("width", x(extent[1]) - x(extent[0]));
                 dimension.filterRange(extent);
-                console.log(x(extent[0]));
-                if (id === 3) {document.getElementById('sankey_table').scrollLeft=(x(extent[0])/10-1)*100;};
+                // console.log(x(extent[0]));
+                // if (id === 3) {document.getElementById('sankey_table').scrollLeft=(x(extent[0])/10-1)*100;};
             });
 
             brush.on("brushend.chart", function() {
@@ -499,7 +503,7 @@
 
         $('#sankey_table').on('scroll',function(){
             var year = $('#sankey_table').scrollLeft();
-            console.log(year, 1901+year/100, 1901+year/100+16);
+            // console.log(year, 1901+year/100, 1901+year/100+16);
             filter([null,null,null,[1901+year/100, 1901+year/100+16]]);
             });
 
