@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>hello world</title>
+    <style>
+
+    </style>
+
+</head>
+
+<body>
+    <div id='sankey_table' style='position:relative; height:200px; width:100%; overflow:auto;'>
+        <svg id="sankey"></svg>
+    </div>
+
+    <div id="charts">
+    <div id="category-chart" class="chart">
+        <div class="title">Category</div>
+    </div>
+    <div id="age-chart" class="chart">
+        <div class="title">Age of Award</div>
+    </div>
+    <div id="country-chart" class="chart">
+        <div class="title">Insititution Country</div>
+    </div>
+    <div id="year-chart" class="chart">
+        <div class="title">Year</div>
+    </div>
+    </div>
+
+    <aside id="totals"><span id="active">-</span> of <span id="total">-</span> records selected.</aside>
+
+    <script src="src/jquery-3.2.1.min.js"></script>
+    <script src="src/d3.js" charset="utf-8"></script>
+    <script src="src/sankey.js"></script>
+    <script src="src/crossfilter.v1.min.js"></script>
+
+    <script>
+        d3.json("data/nobel_.json", function(err, data) {
+
+            var color = d3.scale.category20(); 
+            var country_color = d3.scale.category20c();
+
+            // var body = d3.select("body");
+
+            var margin = {top: 10, right: 10, bottom: 10, left: 10},                  
+                height = $('#sankey_table').get(0).clientHeight - margin.top - margin.bottom,
+                width =  height * 60;
+            console.log(height, width)
+
+            var svg = d3.select("body").select("svg")
+                .attr("width", width)  
+                .attr("height", height)  
+                .append("g")  
+                .attr("transform", "translate(" + margin.left + "," + margin.top + ")");  
+
+
+            // 定义桑基布局
+            var sankey = d3.sankey()
+                    .nodeWidth(height / 10) 
+                    .nodePadding(height / 15) 
+                    .size([width-30, height-30]) 
+                    .nodes(data.nodes)  
+                    .links(data.links)
+                    .layout();
+
+            // 路径数据生成器
+            var path = sankey.link();
+            console.log(path)
+
+            // 绘制连接数据
+            var links = svg.append("g").selectAll("path")
+                        .data(data.links)
+                        .enter()
+
+            console.log(links)
+
+            // 绑定节点数据
+            var nodes = svg.append("g").selectAll(".node")
+                            .data(data.nodes)
+                            .enter();
+
+            // 绘制连接线
+            links.append("path")
+                .attr({
+                    "fill": "none",   //填充色
+                    'stroke': function(d,i){ return color(d.category); },  //描边色
+                    "stroke-opacity": 0.5,  //描边透明度
+                    'd': path,  //路径数据
+                    'id': function(d,i){ return 'link' +i }  //ID
+                })
+                .style("stroke-width", function (d) {  //连线的宽度
+                    return Math.max(1, d.dy);
+                })
+                .on("click", function(d){
+                    var cat_num = {"Chemistry":1, "Economics":2, "Literature":3, "Medicine":4, "Peace":5, "Physics":6, 0:7};
+                    var category = cat_num[d.category];
+                    filter([[category,category+1],null,null,null]);
+
+                })
+
+
+
+            nodes.append("rect")
+                    .attr('x', function (d) { return d.x; })
+                    .attr('y', function (d) { return d.y; })
+                    .attr("width", function(d) { return d.dx; })
+                    .attr("height", function(d) { return d.dy; })
+                    // .style("fill", "tomato");
+                    .attr("fill", function(d) {return country_color(d.country)})
+                    .attr("opacity", 0.5)
+                    .on("mouseover",function(d,i){
+                        d3.select(this)
+                            .attr("opacity", 1);
+                    })
+                    .on("mouseout",function(d,i){
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .attr("opacity", 0.5);
+                    })
+                    .on("click", function(d){
+                        d.country
+                        
+                    });                    
+
+            // 绘制节点文本
+            nodes.append("text")
+                    .attr({
+                        y: function (d) { return d.y+d.dy / 2; },                        
+                        x: function (d) { return d.x;},
+                        "opacity": 0
+                    })
+                    .attr("font-size", height / 20)
+                    .text(function (d) { return d.country; })
+                    .on("mouseover",function(d,i){
+                        d3.select(this)
+                            .attr("opacity", 1);
+                    })
+                    .on("mouseout",function(d,i){
+                        d3.select(this)
+                            .transition()
+                            .duration(500)
+                            .attr("opacity", 0);
+                    }); 
+
+            nodes.append("text") 
+                    .attr("x", function(d) {return d.x})
+                    .attr("y", height-15)
+                    // .attr("opacity", 0.1)
+                    .attr("font-size", height / 20)
+                    .text(function(d){return d.year})
+
+
+            // // 绘制连接文本
+            // links.append('text')
+            //         .append('textPath')
+            //         .attr('xlink:href', function (d,i) { return '#link' + i; })
+            //         .attr('startOffset','50%')
+            //         .attr("opacity", 0)
+            //         .text(function (d) { return d.category + d.value; })
+        });
+
+        d3.csv("data/data.csv", function(error, data) {
+
+            var formatNumber = d3.format("d");
+
+            var nestByYear = d3.nest()
+                .key(function(d) { return d.year; });
+
+            var nobel = crossfilter(data),
+                all = nobel.groupAll(),
+                year = nobel.dimension(function(d) { return d.year; }),
+                years = year.group(function(d) { return d; }),
+                age = nobel.dimension(function(d) { return d.age; }),
+                ages = age.group(function(d) { return d; }),
+                category = nobel.dimension(function(d) { return d.category; }),
+                categories = category.group(function(d) { return d; }),
+                country = nobel.dimension(function(d) { return Math.floor(d.country / 1); }),
+                countries = country.group(function(d) { return d; });
+
+            var charts = [
+
+            barChart()
+                .dimension(category)
+                .group(categories)
+                .x(d3.scale.linear()
+                .domain([1, 7])
+                .rangeRound([0, 10 * 7])),
+
+            barChart()
+                .dimension(age)
+                .group(ages)
+                .x(d3.scale.linear()
+                .domain([17, 91])
+                .rangeRound([0, 10 * 75])),
+
+            barChart()
+                .dimension(country)
+                .group(countries)
+                .x(d3.scale.linear()
+                .domain([0, 30])
+                .rangeRound([0, 10 * 31])),
+
+            barChart()
+                .dimension(year)
+                .group(years)
+                .x(d3.scale.linear()
+                .domain([1900, 2018])
+                .rangeRound([0, 10 * 118]))
+                .filter([1949, 2000])
+
+            ];
+
+            var chart = d3.selectAll(".chart")
+                .data(charts)
+                .each(function(chart) { chart.on("brush", renderAll).on("brushend", renderAll); });
+
+            var list = d3.selectAll(".list")
+                .data([nobelList]);
+
+            d3.selectAll("#total")
+                .text(formatNumber(nobel.size()));
+
+            renderAll();
+
+            function render(method) {
+            d3.select(this).call(method);
+            }
+
+            function renderAll() {
+            chart.each(render);
+            list.each(render);
+            d3.select("#active").text(formatNumber(all.value()));
+            }
+
+            window.filter = function(filters) {
+            filters.forEach(function(d, i) { charts[i].filter(d); });
+            renderAll();
+            };
+
+            window.reset = function(i) {
+            charts[i].filter(null);
+            renderAll();
+            };
+
+            function nobelList(div) {
+            var nobelByYear = nestByYear.entries(year.top(30));
+
+            div.each(function() {
+                var year = d3.select(this).selectAll(".year")
+                    .data(nobelByYear, function(d) { return d.key; });
+
+                year.enter().append("div")
+                    .attr("class", "year")
+                .append("div")
+                    .attr("class", "y")
+                    .text(function(d) { return d.values[0].year; });
+
+                year.exit().remove();
+
+                var nl = year.order().selectAll(".nl")
+                    .data(function(d) { return d.values; }, function(d) { return d.id; });
+
+                var nobelEnter = nl.enter().append("div")
+                    .attr("class", "nl");
+
+                nobelEnter.append("div")
+                    .attr("class", "id")
+                    .text(function(d) { return d.id; });
+
+                nobelEnter.append("div")
+                    .attr("class", "name")
+                    .text(function(d) { return d.firstname+" "+d.surname; });
+
+                nobelEnter.append("div")
+                    .attr("class", "category")
+                    .text(function(d) { return d.cate; });
+
+                nobelEnter.append("div")
+                    .attr("class", "country")
+                    .text(function(d) { return d.coun; });
+
+                nobelEnter.append("div")
+                    .attr("class", "age")
+                    .text(function(d) { return d.age; });
+
+                nobelEnter.append("div")
+                    .attr("class", "share")
+                    .text(function(d) { return d.share; });
+
+                nobelEnter.append("div")
+                    .attr("class", "motivation")
+                    .text(function(d) { return d.motivation; });
+
+                nl.exit().remove();
+
+                nl.order();
+            });
+            }
+
+            function barChart() {
+            if (!barChart.id) barChart.id = 0;
+
+            var margin = {top: 10, right: 10, bottom: 20, left: 10},
+                x,
+                y = d3.scale.linear().range([100, 0]),
+                id = barChart.id++,
+                axis = d3.svg.axis().orient("bottom").ticks(7),
+                brush = d3.svg.brush(),
+                brushDirty,
+                dimension,
+                group,
+                round;
+
+            function chart(div) {
+                var width = x.range()[1],
+                    height = y.range()[0];
+
+                y.domain([0, group.top(1)[0].value]);
+
+                div.each(function() {
+                var div = d3.select(this),
+                    g = div.select("g");
+
+                if (g.empty()) {
+                    div.select(".title")
+                        .append("br");
+
+                    div.select(".title")
+                        .append("a")
+                        .attr("href", "javascript:reset(" + id + ");")
+                        .attr("class", "reset")
+                        .text("reset")
+                        .style("display", "none");
+
+                    g = div.append("svg")
+                        .attr("width", width + margin.left + margin.right)
+                        .attr("height", height + margin.top + margin.bottom)
+                    .append("g")
+                        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+                    g.append("clipPath")
+                        .attr("id", "clip-" + id)
+                    .append("rect")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .append;
+
+                    g.selectAll(".bar")
+                        .data(["background", "foreground"])
+                    .enter().append("path")
+                        .attr("class", function(d) { return d + " bar"; })
+                        .datum(group.all());
+
+                    g.selectAll(".foreground.bar")
+                        .attr("clip-path", "url(#clip-" + id + ")");
+
+                    g.append("g")
+                        .attr("class", "axis")
+                        .attr("transform", "translate(4," + height + ")")
+                        .call(axis);
+
+                    var gBrush = g.append("g").attr("class", "brush").call(brush);
+                    gBrush.selectAll("rect").attr("height", height);
+                    gBrush.selectAll(".resize").append("path").attr("d", resizePath);
+                }
+
+                if (brushDirty) {
+                    brushDirty = false;
+                    g.selectAll(".brush").call(brush);
+                    div.select(".title a").style("display", brush.empty() ? "none" : null);
+                    if (brush.empty()) {
+                    g.selectAll("#clip-" + id + " rect")
+                        .attr("x", 0)
+                        .attr("width", width);
+                    } else {
+                    var extent = brush.extent();
+                    g.selectAll("#clip-" + id + " rect")
+                        .attr("x", x(extent[0]))
+                        .attr("width", x(extent[1]) - x(extent[0]));
+                    }
+                }
+
+                g.selectAll(".bar").attr("d", barPath);
+                });
+
+                function barPath(groups) {
+                var path = [],
+                    i = -1,
+                    n = groups.length,
+                    d;
+                while (++i < n) {
+                    d = groups[i];
+                    path.push("M", x(d.key), ",", height, "V", y(d.value), "h9V", height);
+                }
+                return path.join("");
+                }
+
+                function resizePath(d) {
+                var e = +(d == "e"),
+                    x = e ? 1 : -1,
+                    y = height / 3;
+                return "M" + (.5 * x) + "," + y
+                    + "A6,6 0 0 " + e + " " + (6.5 * x) + "," + (y + 6)
+                    + "V" + (2 * y - 6)
+                    + "A6,6 0 0 " + e + " " + (.5 * x) + "," + (2 * y)
+                    + "Z"
+                    + "M" + (2.5 * x) + "," + (y + 8)
+                    + "V" + (2 * y - 8)
+                    + "M" + (4.5 * x) + "," + (y + 8)
+                    + "V" + (2 * y - 8);
+                }
+            }
+
+            brush.on("brushstart.chart", function() {
+                var div = d3.select(this.parentNode.parentNode.parentNode);
+                div.select(".title a").style("display", null);
+            });
+
+            brush.on("brush.chart", function() {
+                var g = d3.select(this.parentNode),
+                    extent = brush.extent();
+                if (round) g.select(".brush")
+                    .call(brush.extent(extent = extent.map(round)))
+                .selectAll(".resize")
+                    .style("display", null);
+                g.select("#clip-" + id + " rect")
+                    .attr("x", x(extent[0]))
+                    .attr("width", x(extent[1]) - x(extent[0]));
+                dimension.filterRange(extent);
+                console.log(x(extent[0]));
+                if (id === 3) {document.getElementById('sankey_table').scrollLeft=(x(extent[0])/10-1)*100;};
+            });
+
+            brush.on("brushend.chart", function() {
+                if (brush.empty()) {
+                var div = d3.select(this.parentNode.parentNode.parentNode);
+                div.select(".title a").style("display", "none");
+                div.select("#clip-" + id + " rect").attr("x", null).attr("width", "100%");
+                dimension.filterAll();
+                }
+            });
+
+            chart.margin = function(_) {
+                if (!arguments.length) return margin;
+                margin = _;
+                return chart;
+            };
+
+            chart.x = function(_) {
+                if (!arguments.length) return x;
+                x = _;
+                axis.scale(x);
+                brush.x(x);
+                return chart;
+            };
+
+            chart.y = function(_) {
+                if (!arguments.length) return y;
+                y = _;
+                return chart;
+            };
+
+            chart.dimension = function(_) {
+                if (!arguments.length) return dimension;
+                dimension = _;
+                return chart;
+            };
+
+            chart.filter = function(_) {
+                if (_) {
+                brush.extent(_);
+                dimension.filterRange(_);
+                } else {
+                brush.clear();
+                dimension.filterAll();
+                }
+                brushDirty = true;
+                return chart;
+            };
+
+            chart.group = function(_) {
+                if (!arguments.length) return group;
+                group = _;
+                return chart;
+            };
+
+            chart.round = function(_) {
+                if (!arguments.length) return round;
+                round = _;
+                return chart;
+            };
+
+            return d3.rebind(chart, brush, "on");
+            }
+        });
+
+        $('#sankey_table').on('scroll',function(){
+            var year = $('#sankey_table').scrollLeft();
+            console.log(year, 1901+year/100, 1901+year/100+16);
+            filter([null,null,null,[1901+year/100, 1901+year/100+16]]);
+            });
+
+
+    </script>
+    <style type="text/css">
+        path:hover{
+            stroke-opacity: 0.9;
+        };
+    </style>
+    <style>
+
+        #body {
+        margin: 10px auto;
+        width: 100%;
+        min-height: 2000px;
+        position: relative;
+        }
+
+        #charts {
+        padding: 10px 0;
+        }
+
+        .chart {
+        display: inline-block;
+        height: 140px;
+        margin-bottom: 20px;
+        }
+
+        .reset {
+        padding-left: 1em;
+        font-size: smaller;
+        color: #ccc;
+        }
+
+        .background.bar {
+        fill: #ccc;
+        }
+
+        .foreground.bar {
+        fill: green;
+        }
+
+        .axis path, .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+        }
+
+        .axis text {
+        font: 10px sans-serif;
+        }
+
+        .brush rect.extent {
+        fill: green;
+        fill-opacity: .125;
+        }
+
+        .brush .resize path {
+        fill: #eee;
+        stroke: #666;
+        }
+
+        div.title {
+        font-weight: bold;
+        height: 40px;
+        }
+
+        #category-chart {
+        width: 90px;
+        }
+
+        #age-chart {
+        width: 770px;
+        }
+
+        #country-chart {
+        width: 320px;
+        }
+
+        #year-chart {
+        width: 920px;
+        }
+
+        #nobel-list {
+        min-height: 1024px;
+        }
+
+        #nobel-list .year,
+        #nobel-list .y {
+        margin-bottom: .4em;
+        }
+
+        #nobel-list .nl {
+        line-height: 1.5em;
+        background: #eee;
+        width: 1200px;
+        margin-bottom: 1px;
+        }
+
+        #nobel-list .id {
+        color: #999;
+        }
+
+        #nobel-list .nl div {
+        display: inline-block;
+        width: 50px;
+        }
+
+        #nobel-list div.name {
+        width: 200px;
+        }
+
+        #nobel-list div.category{
+        width: 100px;
+        }
+
+        #nobel-list div.country {
+        width: 140px;
+        }
+
+        #nobel-list div.motivation {
+        width: 600px;
+        }
+
+        #nobel-list .early {
+        color: green;
+        }
+
+        aside {
+        position: absolute;
+        left: 1020px;
+        font-size: smaller;
+        width: 220px;
+        }
+    </style>
+
+</body>
+</html>
