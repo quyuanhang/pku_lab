@@ -13,6 +13,9 @@
     <div id='sankey_table' style='position:relative; height:200px; width:100%; overflow:auto;'>
         <svg id="sankey"></svg>
     </div>
+    <div id='legend'>
+        <svg id='legend_svg'></svg>
+    </div>
 
     <div id="charts">
     <div id="category-chart" class="chart">
@@ -83,25 +86,39 @@
 
             // 绘制连接线
             links.append("path")
+                // .attr('class', 'mypath')
                 .attr({
-                    "fill": "none",   //填充色
+                    'stroke-opacity': 0.05,
+                    'fill': "none",
                     'stroke': function(d,i){ return color(d.category); },  //描边色
-                    "stroke-opacity": 0.05,  //描边透明度
                     'd': path,  //路径数据
                     'id': function(d,i){ return 'link' +i }  //ID
                 })
-                .style("stroke-width", function (d) {  //连线的宽度
+                .attr("stroke-width", function (d) {  //连线的宽度
                     return Math.max(1, d.dy);
                 })
                 .on("click", function(d){
                     var cat_num = {"Chemistry":1, "Economics":2, "Literature":3, "Medicine":4, "Peace":5, "Physics":6, 0:7};
                     var category = cat_num[d.category];
                     filter([[category,category+1],null,null,null]);
+                    window.category = d.category;      
+                    d3.selectAll('path').attr("stroke-opacity", function(d_){
+                        var r = 0.05;
+                        if (window.category == d_.category){r = 0.5};
+                        return r
+                    });
+                    //这里添加与奖项有关的交互 category对应数字 d.category对应字符串
 
                 })
 
+            var tooltip = d3.select("body")
+            .append("div")
+            .style("position", "absolute")
+            .style("z-index", "10")
+            .style("visibility", "hidden")
+            .text("a simple tooltip");
 
-
+            
             nodes.append("rect")
                     .attr('x', function (d) { return d.x; })
                     .attr('y', function (d) { return d.y; })
@@ -111,39 +128,43 @@
                     .attr("fill", function(d) {return country_color(d.country)})
                     .attr("opacity", 0.5)
                     .on("mouseover",function(d,i){
-                        d3.select(this)
-                            .attr("opacity", 1);
+                        d3.select(this).attr("opacity", 1);
+                        tooltip.text(d.country)
+                        tooltip.style("visibility", "visible");
                     })
                     .on("mouseout",function(d,i){
                         d3.select(this)
                             .transition()
                             .duration(500)
                             .attr("opacity", 0.5);
+                        tooltip.style("visibility", "hidden");
+                        // d3.select(this).text.attr('opacity', 0)
                     })
                     .on("click", function(d){
                         d.country
-                        
-                    });                    
+                        //这里添加与国家有关的交互
+                    })
+                    .on("mousemove", function(){return tooltip.style("top", (event.pageY-10)+"px").style("left",(event.pageX+10)+"px");})
 
             // 绘制节点文本
             nodes.append("text")
                     .attr({
-                        y: function (d) { return d.y+d.dy / 2; },                        
-                        x: function (d) { return d.x;},
+                        y: function (d) { return d.y + d.dy; },                        
+                        x: function (d) { return d.x + d.dx;},
                         "opacity": 0
                     })
                     .attr("font-size", height / 20)
                     .text(function (d) { return d.country; })
-                    .on("mouseover",function(d,i){
-                        d3.select(this)
-                            .attr("opacity", 1);
-                    })
-                    .on("mouseout",function(d,i){
-                        d3.select(this)
-                            .transition()
-                            .duration(500)
-                            .attr("opacity", 0);
-                    }); 
+                    // .on("mouseover",function(d,i){
+                    //     d3.select(this)
+                    //         .attr("opacity", 1);
+                    // })
+                    // .on("mouseout",function(d,i){
+                    //     d3.select(this)
+                    //         .transition()
+                    //         .duration(500)
+                    //         .attr("opacity", 0);
+                    // }); 
 
             nodes.append("text") 
                     .attr("x", function(d) {return d.x})
@@ -153,18 +174,49 @@
                     .text(function(d){return d.year})
                     .on('click', function(d, i){
                         var year = d.year
-                        //
+                        //这里添加与时间有关的交互
                     })
 
+            legend(color)
+            
 
-            // // 绘制连接文本
-            // links.append('text')
-            //         .append('textPath')
-            //         .attr('xlink:href', function (d,i) { return '#link' + i; })
-            //         .attr('startOffset','50%')
-            //         .attr("opacity", 0)
-            //         .text(function (d) { return d.category + d.value; })
         });
+
+        function legend(color_scale){
+            var rwidth = 30,
+                twidth = 70,
+                inter = 15,
+                height = 15
+                side = 5;
+            var dataset = ["Chemistry", "Economics", "Literature", "Medicine", "Peace", "Physics"];
+            var svg = d3.select("#legend_svg")
+                .attr('width', (rwidth + twidth + inter) * dataset.length + side * 2)
+                .attr('height', height + side * 2);
+
+            svg.selectAll('rect')
+				.data(dataset)
+				.enter()
+                .append('rect')                
+				.attr("x", function(d, i){
+					return  (rwidth + twidth + inter) * i;
+				})
+				.attr("y", 5)
+				.attr("width", rwidth)
+				.attr("height", 15)
+                .attr('opacity', 0.5)
+                .attr('fill', function(d){return color_scale(d)});
+
+            svg.selectAll('text')
+                .data(dataset)
+                .enter()
+                .append('text')
+                .attr('x', function(d, i){return (rwidth + twidth + inter) * i + rwidth + side})
+                .attr('y', side + height)
+                .attr('height', height)
+                .attr('width', twidth)
+                .text(function(d){return d})
+        }
+
 
         d3.csv("data/data.csv", function(error, data) {
 
@@ -507,12 +559,17 @@
             filter([null,null,null,[1901+year/100, 1901+year/100+16]]);
             });
 
-
     </script>
     <style type="text/css">
         path:hover{
             stroke-opacity: 0.9;
         };
+    </style>
+    <style id="path_class">
+        .mypath {
+            stroke-opacity: 0.05; /* 描边透明度 */
+
+	    }
     </style>
     <style>
 
