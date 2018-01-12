@@ -30,7 +30,7 @@ begin = time.time()
 l_loss = 0
 i = 0
 stop = 0
-for i in tqdm(range(2000)):
+for i in tqdm(range(5000)):
     c_loss = model.partial_fit(train_male[:, [0, 1]], train_male[:, [2]], 
                         train_female[:, [0, 1]], train_female[:, [2]])    
     if abs(c_loss - l_loss) == 0:
@@ -81,5 +81,13 @@ for k in range(5, 100, 5):
 
 plt.scatter(precision_list, recall_list)
 plt.show()
+
+with open('../public_data/log.csv', 'a') as f:
+    log = [precision_list[0], precision_list[1], precision_list[9], recall_list[0], recall_list[1], recall_list[9]]
+    log_format = list(map(lambda x: float('%0.4f' % x), log))
+    print(log_format)
+    s = 'csvd,' + str(log_format)[1:-1]
+    f.write(s)
+    f.write('\n')
 
 

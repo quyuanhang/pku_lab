@@ -335,3 +335,10 @@ for k in [5, 10, 50]:
     cover = coverage(recommend, train_frame.values, k)
     cover_list.append(cover)
 
+with open('../public_data/log.csv', 'a') as f:
+    log = [precision_list[0], precision_list[1], precision_list[9], recall_list[0], recall_list[1], recall_list[9]]
+    log_format = list(map(lambda x: float('%0.4f' % x), log))
+    print(log_format)
+    s = 'ibcf,' + str(log_format)[1:-1]
+    f.write(s)
+    f.write('\n')

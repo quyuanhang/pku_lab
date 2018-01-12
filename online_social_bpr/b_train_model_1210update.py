@@ -29,7 +29,10 @@ male_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).value
 
 
 male_set = set(male_train_raw[male_train_raw[:, 2]==2, 0])
-female_set = set(male_train_raw[:, 1])
+female_set = set(male_train_raw[male_train_raw[:, 2]==2, 1])
+# =============================================================================
+# female_set = set(male_train_raw[:, 1])
+# =============================================================================
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
 
@@ -44,7 +47,7 @@ male_train = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2]]
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
               n_items=len(female_to_index), match_weight=1)
 
-male_bpr.train(male_train, epochs=3000)
+male_bpr.train(male_train, epochs=5000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 
@@ -107,5 +110,14 @@ for k in [5, 10, 50]:
 
 plt.scatter(precision_list, recall_list)
 plt.show()
+
+with open('../public_data/log.csv', 'a') as f:
+    log = [precision_list[0], precision_list[1], precision_list[9], recall_list[0], recall_list[1], recall_list[9]]
+    log_format = list(map(lambda x: float('%0.4f' % x), log))
+    print(log_format)
+    s = 'algorithm,' + str(log_format)[1:-1]
+    f.write(s)
+    f.write('\n')
+
 
 

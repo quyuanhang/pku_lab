@@ -209,10 +209,10 @@ male_test = pd.concat([match_test, male_posi_test])
 female_train = pd.concat([match_train, female_posi_train])
 female_test = pd.concat([match_test, female_posi_test])
 
-male_train.to_csv('input/male_train.csv', index=False, header=False)
-male_test.to_csv('input/male_test.csv', index=False, header=False)
-female_train.to_csv('input/female_train.csv', index=False, header=False)
-female_test.to_csv('input/female_test.csv', index=False, header=False)
+male_train.to_csv('../public_data/male_train.csv', index=False, header=False)
+male_test.to_csv('../public_data/male_test.csv', index=False, header=False)
+female_train.to_csv('../public_data/female_train.csv', index=False, header=False)
+female_test.to_csv('../public_data/female_test.csv', index=False, header=False)
 
 
 # 整理字典

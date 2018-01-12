@@ -136,6 +136,8 @@ class BPR(object):
 
         x_ui = T.dot(self.W[u], self.H[i].T).diagonal() + self.B[i]
         x_uj = T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j]
+        # x_ui = T.dot(self.W[u], self.H[i].T).diagonal()
+        # x_uj = T.dot(self.W[u], self.H[j].T).diagonal()
 
         x_uij = x_ui - x_uj
 

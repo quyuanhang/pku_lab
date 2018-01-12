@@ -100,4 +100,11 @@ for k in [5, 10, 50]:
 plt.scatter(precision_list, recall_list)
 plt.show()
 
+with open('../public_data/log.csv', 'a') as f:
+    log = [precision_list[0], precision_list[1], precision_list[9], recall_list[0], recall_list[1], recall_list[9]]
+    log_format = list(map(lambda x: float('%0.4f' % x), log))
+    print(log_format)
+    s = 'algorithm+,' + str(log_format)[1:-1]
+    f.write(s)
+    f.write('\n')
 
