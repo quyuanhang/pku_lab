@@ -1,8 +1,5 @@
 import pandas as pd
-import numpy as np
-import tqdm
 import json
-import re
 
 with open('../data/nobel_.csv') as f:
     frame = pd.read_csv(f, error_bad_lines=False)
@@ -18,22 +15,13 @@ with open('../data/nobel_.csv') as f:
 nodes = list()
 links = list()
 
-# def data_normalize(x):
-#     if type(x) == str:
-#         return x
-#     if x != x:
-#         return x
-#     x = float(x)
-#     return x
         
 frame = frame.sort_values(by=['year'])
-# frame['_index'] = range(len(frame))
-# frame = frame.applymap(data_normalize)
 frame.index = frame['year']
 min_year = int(frame.year.min())
 max_year = int(frame.year.max())
 
-categorys = ('Physics', 'Medicine', 'Chemistry', 'Peace', 'Literature')
+categorys = ['Physics', 'Medicine', 'Chemistry', 'Peace', 'Literature']
 node_keys = ('year', 'category', 'share', 'country')
 
 def save_node(node, nodes_dict, nodes_list, node_index):
@@ -61,10 +49,16 @@ class NodeIndex():
 node_index = NodeIndex()
 last = dict()
 for year in range(min_year, max_year):
+    if year == 1901:
+        categorys.append('Economics')
     try:
         current_raw = frame.loc[year]
     except:
-        continue
+        current_raw = pd.DataFrame(index=[year]*len(categorys), columns=node_keys)
+        current_raw['year'] = year
+        current_raw['category'] = categorys
+        current_raw['share'] = 1
+        current_raw['country'] = 'no'
     if type(current_raw) == pd.Series:
         current_raw = pd.DataFrame(current_raw).T
     tmp = dict()
@@ -73,17 +67,12 @@ for year in range(min_year, max_year):
         if cat_data.empty:
             node = dict(zip(node_keys, (year, {category: 1}, 1, 'no')))
             save_node(node, tmp, nodes, node_index)
-            # tmp[node['index']] = node
-            # nodes.append(node)
         else:
             for i, row in cat_data.iterrows():
                 node = dict(row)
-                # node['index'] = node_index.generate_index()
                 node['year'] = year
                 node['category'] = {node['category']: node['share']}
                 save_node(node, tmp, nodes, node_index)
-                # tmp[node['index']] = node
-                # nodes.append(node)
     if not last:
         last = tmp
         continue
@@ -100,29 +89,7 @@ for year in range(min_year, max_year):
                     })
     last = tmp
 
-# for i, row in tqdm.tqdm(frame.iterrows()):
-#     node = dict(row)
-#     nodes.append(dict(row))
-#     if (node['year'] - 1) < min_year:
-#         continue
-#     last_year = node['year'] - 1
-#     while last_year not in frame.index:
-#         last_year -= 1
-#     last_year_dataframe = frame.loc[last_year]
-#     if type(last_year_dataframe) == pd.Series:
-#         last_year_dataframe = pd.DataFrame(last_year_dataframe).T
-#     for _i, _row in last_year_dataframe.iterrows():
-#         if _row['category'] == node['category']:
-#             links.append({
-#                 'source': int(_row['_index']),
-#                 'target': int(node['_index']),
-#                 'value': min((1 / _row['share']), (1 / node['share']))
-#             })
 
 data = {'nodes': nodes, 'links': links}
 with open('../data/nobel_.json', 'w+') as f:
-#==============================================================================
-#     f.write(str(data).replace('\'', '"'))
-#     json.load(f)
-#==============================================================================
     json.dump(obj=data, fp=f, indent=4)
