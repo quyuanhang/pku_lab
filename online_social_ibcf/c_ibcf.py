@@ -194,7 +194,7 @@ class SRI(object):
             k_rec = set(list(rec.keys())[:K])
             s += len(k_rec & set(self.test_data[u].keys()))
             r += len(k_rec)
-        sr = s / r
+        sr = s / (r + 0.1)
         sri = sr / self.bsr
         return sri 
 

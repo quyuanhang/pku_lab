@@ -29,10 +29,10 @@ male_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).value
 
 
 male_set = set(male_train_raw[male_train_raw[:, 2]==2, 0])
-female_set = set(male_train_raw[male_train_raw[:, 2]==2, 1])
-# =============================================================================
-# female_set = set(male_train_raw[:, 1])
-# =============================================================================
+#==============================================================================
+# female_set = set(male_train_raw[male_train_raw[:, 2]==2, 1])
+#==============================================================================
+female_set = set(male_train_raw[:, 1])
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
 

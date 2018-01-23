@@ -5,7 +5,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 class sampleGenerator(object):
-    def __init__(self, n_user=1000, n_item=10000, n_feature=50, mu=0.5, sigma=0.2, hedge=0.28):
+    def __init__(self, n_user=1000, n_item=1000, n_feature=50, mu=0.5, sigma=0.2, hedge=0.28):
         self.n_user = n_user
         self.n_item = n_item
         self.n_feature = n_feature
@@ -16,21 +16,32 @@ class sampleGenerator(object):
         self.user_prefer = self.random_matrix(self.n_user, self.n_feature)
         self.item_attr = self.random_matrix(self.n_item, self.n_feature)
         self.item_prefer = self.random_matrix(self.n_item, self.n_feature)
-        self.u_i_rank, self.u_i_link = self.generate_link(self.user_prefer, self.item_attr, self.hedge)
-        self.i_u_rank, self.i_u_link = self.generate_link(self.item_prefer, self.user_attr, self.hedge)
+        self.u_diff_prefer = self.random_matrix(self.n_user, self.n_feature)
+        self.i_diff_prefer = self.random_matrix(self.n_item, self.n_feature)
+        self.u_i_rank, self.u_i_link = self.generate_link(self.user_prefer, self.user_attr, self.item_attr, self.hedge)
+        self.i_u_rank, self.i_u_link = self.generate_link(self.item_prefer, self.item_attr, self.user_attr, self.hedge)
         # self.friendship = np.multiply(self.u_i_link, self.i_u_link)
 
     
     def random_matrix(self, row, column):
-        return np.random.normal(
-            loc=self.mu, scale=self.sigma, size=(row * column)).reshape(row, column)
-    
-    def generate_link(self, m1, m2, hedge):
-        noise = np.random.normal(0, 0.01, self.n_user*self.n_item).reshape(m1.shape[0], m2.shape[0])
-        mat = (np.matmul(m1, m2.T)) / self.n_feature + noise
-# =============================================================================
-#         mat = (np.matmul(m1, m2.T)) / self.n_feature
-# =============================================================================
+        # return np.random.normal(
+        #     loc=self.mu, scale=self.sigma, size=(row * column)).reshape(row, column)
+        return np.random.randint(low=0, high=2, size=(row, column))
+
+
+    def generate_link(self, m_u_p, m_u_a, m_i_a, hedge):
+        noise = np.random.normal(0, 0.1, self.n_user*self.n_item).reshape(m_u_p.shape[0], m_i_a.shape[0])
+        factor_mat = (np.matmul(m_u_p, m_i_a.T)) / self.n_feature
+        # diff_prefer = self.random_matrix(m_u_p.shape[0], self.n_feature)
+        # diff_list = list()
+        # for u in range(m_u_a.shape[0]):
+        #     diff_mat = np.tile(m_u_a[u], (m_i_a.shape[0], 1)) - m_i_a
+        #     diff_mat = np.multiply(diff_mat, np.tile(diff_prefer[u], (diff_mat.shape[0], 1)))
+        #     diff_vec = diff_mat.sum(axis=1)
+        #     diff_list.append(diff_vec)
+        # diff_sum_mat = np.array(diff_list)
+        # mat = factor_mat + diff_sum_mat + noise
+        mat = factor_mat + noise
         func = np.frompyfunc(lambda x: 1 if x > hedge else 0, 1, 1)
         return mat, func(mat)
 
@@ -61,7 +72,7 @@ class sampleGenerator(object):
                     friend += 1
                     friend_list.append(['m' + str(i), 'f' + str(j), 2])
 
-        print(m_f, f_m, friend, friend/(m_f*f_m))                
+        print(m_f, f_m, friend, friend/(self.n_user*self.n_item))                
         return pd.DataFrame(u_i_list), pd.DataFrame(i_u_list), pd.DataFrame(friend_list)
 
 class sampleFilter(object):
@@ -84,16 +95,17 @@ class sampleFilter(object):
         friend = self.u_i_friend_with_num[self.u_i_friend_with_num['friend_num']>=hedge].iloc[:, :-1]
         iu = self.i_u_with_num[self.i_u_with_num['friend_num']>=hedge].iloc[:, :-1]
         ui = self.u_i_with_num[self.u_i_with_num['friend_num']>=hedge].iloc[:, :-1]
+        
         print(len(ui), len(iu), len(friend), len(friend)/(len(ui)*len(iu)))
         return ui, iu, friend
 
 
 if __name__ == '__main__':
     sample_generator = sampleGenerator()
-    # u_i_list_tmp, i_u_list_tmp, friend_list_tmp = sample_generator.generate_sample(1)
+    u_i_list, i_u_list, friend_list = sample_generator.generate_sample(0.5, 0.3, 0.25)
+    # u_i_list_tmp, i_u_list_tmp, friend_list_tmp = sample_generator.generate_sample(0.5, 0.28, 0.25)
     # sample_filter = sampleFilter(u_i_list_tmp, i_u_list_tmp, friend_list_tmp)
     # u_i_list, i_u_list, friend_list = sample_filter._filter(hedge=3)
-    u_i_list, i_u_list, friend_list = sample_generator.generate_sample(0.5, 0.3, 0.25)
     friend_train, friend_test = train_test_split(friend_list, test_size=0.5)
     u_i_train, u_i_test = train_test_split(u_i_list, test_size=0.5)
     i_u_train, i_u_test = train_test_split(i_u_list, test_size=0.5)

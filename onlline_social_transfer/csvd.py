@@ -30,7 +30,7 @@ begin = time.time()
 l_loss = 0
 i = 0
 stop = 0
-for i in tqdm(range(5000)):
+for i in tqdm(range(20000)):
     c_loss = model.partial_fit(train_male[:, [0, 1]], train_male[:, [2]], 
                         train_female[:, [0, 1]], train_female[:, [2]])    
     if abs(c_loss - l_loss) == 0:
