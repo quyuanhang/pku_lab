@@ -250,8 +250,8 @@ class BPR(object):
             #     sgd_neg_items.append(neg_item)
             sgd_pos_items.append(match_item)
             sgd_neg_items.append(neg_item)
-            sgd_pos_items.append(pos_item)
-            sgd_neg_items.append(neg_item)
+            # sgd_pos_items.append(pos_item)
+            # sgd_neg_items.append(neg_item)
 
         return sgd_users, sgd_pos_items, sgd_neg_items
 

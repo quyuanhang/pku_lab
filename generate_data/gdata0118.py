@@ -17,7 +17,9 @@ class sampleGenerator(object):
         self.user_prefer = self.random_matrix(self.n_user, self.n_feature)
         self.item_prefer = self.random_matrix(self.n_item, self.n_feature)        
         self.noise = np.random.normal(loc=0, scale=0.1, size=(self.n_user, self.n_item)) 
-        self.q_matrix = np.matmul(self.user_prefer, self.item_attr.T) + np.matmul(self.item_prefer, self.user_attr.T) + self.noise
+        self.user_rank = np.matmul(self.user_prefer, self.item_attr.T)
+        self.item_rank = np.matmul(self.item_prefer, self.user_attr.T)
+        self.q_matrix = (self.user_rank + self.item_rank) / 2 + self.noise
 
     def random_matrix(self, row, column):
         # return np.random.normal(
@@ -25,20 +27,26 @@ class sampleGenerator(object):
         return np.random.randint(low=0, high=2, size=(row, column))
 
     def generate_sample(self):
-        m = self.q_matrix
+        m = self.q_matrix.copy()
+        m[self.user_rank < self.mu] = 0
+        m[self.item_rank < self.mu] = 0        
         friend_list, u_i_list, i_u_list = list(), list(), list()
-        match_hedge = np.percentile(m, 100-self.sparseness*100)
-        like_hedge = np.percentile(m, 100-((self.sparseness)**(1/2))*100)
+        hedge = np.percentile(m, 100-self.sparseness*100)
+        like_hedge = np.percentile(m, 100-((self.sparseness)**(1/4))*100)
         for i in range(m.shape[0]):
             for j in range(m.shape[1]):
                 qij = m[i, j]
-                if qij > match_hedge:
+                if qij > hedge:
                     friend_list.append(['m' + str(i), 'f' + str(j), 2])
-                elif qij > like_hedge:
-                    if np.random.rand() < 0.5:
+                # elif qij > like_hedge:
+                else:
+                    uij = self.user_rank[i, j]
+                    iij = self.item_rank[i, j]
+                    if (uij > hedge) and (iij <= hedge):
                         u_i_list.append(['m' + str(i), 'f' + str(j), 1])
-                    else:
+                    elif (uij <= hedge) and (iij > hedge):
                         i_u_list.append(['m' + str(i), 'f' + str(j), 1])
+                        
         return pd.DataFrame(friend_list), pd.DataFrame(u_i_list), pd.DataFrame(i_u_list)
 
 if __name__ == '__main__':

@@ -30,7 +30,7 @@ begin = time.time()
 l_loss = 0
 i = 0
 stop = 0
-for i in tqdm(range(20000)):
+for i in tqdm(range(5000)):
     c_loss = model.partial_fit(train_male[:, [0, 1]], train_male[:, [2]], 
                         train_female[:, [0, 1]], train_female[:, [2]])    
     if abs(c_loss - l_loss) == 0:
@@ -78,8 +78,20 @@ for k in range(5, 100, 5):
     precision, recall = test.precision_recall(male_prediction, test_dict, train_dict, top=k, mode='base').values[0]
     precision_list.append(precision)
     recall_list.append(recall)
-
 plt.scatter(precision_list, recall_list)
+
+f1 = np.polyfit(precision_list, recall_list, 2)
+# =============================================================================
+# line_x = range(min(precision_list), max(precision_list), 0.01)
+# =============================================================================
+line_x = np.linspace(min(precision_list), max(precision_list), 10)
+line_y = np.polyval(f1, line_x)
+plt.plot(line_x, line_y)
+# p1 = np.poly1d(f1)
+# print(p1)
+
+
+
 plt.show()
 
 with open('../public_data/log.csv', 'a') as f:
