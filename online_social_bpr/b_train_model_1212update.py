@@ -18,16 +18,16 @@ import utils
 import bpr
 import test
 
-male_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).values
-female_train_raw = pd.read_csv('../public_data/female_train.csv', header=None).values
+male_train_raw = pd.read_csv('input/male_train.csv', header=None).values
+female_train_raw = pd.read_csv('input/female_train.csv', header=None).values
 
 male_train_match = male_train_raw[male_train_raw[:, 2]==2]
 
-male_test_raw = pd.read_csv('../public_data/male_test.csv', header=None).values
+male_test_raw = pd.read_csv('input/male_test.csv', header=None).values
 male_test_match = male_test_raw[male_test_raw[:, 2]==2]
 
 male_set = set(male_train_raw[male_train_raw[:, 2]==2, 0])
-female_set = set(male_train_raw[:, 1])
+female_set = set(male_train_raw[male_train_raw[:, 2]==2, 1])
 
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
@@ -100,7 +100,7 @@ for k in [5, 10, 50]:
 plt.scatter(precision_list, recall_list)
 plt.show()
 
-with open('../public_data/log.csv', 'a') as f:
+with open('input/log.csv', 'a') as f:
     log = [precision_list[0], precision_list[1], precision_list[9], recall_list[0], recall_list[1], recall_list[9]]
     log_format = list(map(lambda x: float('%0.4f' % x), log))
     print(log_format)

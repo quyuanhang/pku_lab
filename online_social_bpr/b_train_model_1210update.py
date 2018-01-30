@@ -30,9 +30,11 @@ male_train_raw = pd.read_csv('../public_data/male_train.csv', header=None).value
 
 male_set = set(male_train_raw[male_train_raw[:, 2]==2, 0])
 #==============================================================================
-# female_set = set(male_train_raw[male_train_raw[:, 2]==2, 1])
+female_set = set(male_train_raw[male_train_raw[:, 2]==2, 1])
 #==============================================================================
-female_set = set(male_train_raw[:, 1])
+# =============================================================================
+# female_set = set(male_train_raw[:, 1])
+# =============================================================================
 male_to_index = dict(zip(male_set, range(len(male_set))))
 female_to_index = dict(zip(female_set, range(len(female_set))))
 
@@ -45,9 +47,9 @@ male_train = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2]]
 # =============================================================================
 
 male_bpr = bpr.BPR(rank=50, n_users=len(male_to_index),
-              n_items=len(female_to_index), match_weight=1)
+              n_items=len(female_to_index), match_weight=2)
 
-male_bpr.train(male_train, epochs=5000)
+male_bpr.train(male_train, epochs=3000)
 
 male_prediction = male_bpr.prediction_to_matrix()
 
@@ -68,8 +70,38 @@ male_test_raw = pd.read_csv('../public_data/male_test.csv', header=None).values
 male_test = np.array([[male_to_index[i[0]], female_to_index[i[1]], i[2]]
     for i in male_test_raw if i[0] in male_to_index and i[1] in female_to_index])
 
+def auc(train_dict, rank_dict, test_dict):
+    auc_values = []
+    z = 0
+    user_set = set(rank_dict.keys()) & set(test_dict.keys())
+    for user in user_set:
+        predictions = rank_dict[user]
+        auc_for_user = 0.0
+        n = 0
+        pre_items = set(predictions.keys()) - set(train_dict[user].keys())
+        pos_items = pre_items & set(test_dict[user].keys())
+        neg_items = pre_items - pos_items
+        for pos_item in pos_items:
+            for neg_item in neg_items:
+                n += 1
+                if predictions[pos_item] > predictions[neg_item]:
+                    auc_for_user += 1
+                elif predictions[pos_item] == predictions[neg_item]:
+                    auc_for_user += 0.5
+        if n > 0:
+            auc_for_user /= n
+            auc_values.append(auc_for_user)
+        z += 1
+        if z % 100 == 0 and len(auc_values) > 0:
+            sys.stderr.write("\rCurrent AUC mean (%s samples): %0.5f" % (str(z), np.mean(auc_values)))
+            sys.stderr.flush()
+    sys.stderr.write("\n")
+    sys.stderr.flush()
+    return np.mean(auc_values)  
 
-test.user_auc(male_prediction, male_train, male_test)
+
+
+# test.user_auc(male_prediction, male_train, male_test)
 
 
 # =============================================================================
@@ -96,6 +128,7 @@ train_dict = data_to_dict(male_train, 2)
 test_dict = data_to_dict(male_test, 2)
 pre_dict = male_bpr.prediction_to_dict(100)
 
+print(auc(train_dict, pre_dict, test_dict))
 
 precision_list, recall_list = [], []
 for k in range(5, 100, 5):
