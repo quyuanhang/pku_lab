@@ -43,7 +43,7 @@ if __name__ == '__main__':
     topn = 50
 
     # algorithm
-    algorithm = Algorithm(train_frame, mweight=100, pweight=100, epochs=3000)
+    algorithm = Algorithm(train_frame, mweight=100, pweight=100, epochs=5000)
     alg_rec = algorithm.predict(mode='dict')
     precision_list, recall_list = test.precision_recall_list(
         alg_rec, test_dict, train_dict, range(5, topn, 5))
@@ -52,7 +52,7 @@ if __name__ == '__main__':
     # auc = test.auc(train_dict, alg_rec, test_dict)
 
     # bpr
-    bpr = Algorithm(train_frame, mweight=100, pweight=0, epochs=3000)
+    bpr = Algorithm(train_frame, mweight=100, pweight=0, epochs=5000)
     bpr = bpr.predict(mode='dict', top=topn)
     precision_list, recall_list = test.precision_recall_list(
         bpr, test_dict, train_dict, range(5, topn, 5))

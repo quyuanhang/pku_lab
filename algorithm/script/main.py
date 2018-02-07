@@ -30,7 +30,7 @@ def step():
 
     train_frame = pd.read_csv('../data/male_train.csv')
     test_frame = pd.read_csv('../data/male_test.csv')
-    test_dict = test.data_format(test_frame, min_rate=1)
+    test_dict = test.data_format(test_frame, min_rate=2)
     train_dict = test.data_format(train_frame, min_rate=2)
     topn = 100
     auc_list = list()
@@ -98,7 +98,7 @@ if __name__ == '__main__':
         shutil.rmtree('../log/')
     os.makedirs('../log/')
     
-    loop(1)
+    loop(5)
 
     frame = log_reduce()
     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])
