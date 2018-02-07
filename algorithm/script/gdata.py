@@ -12,19 +12,21 @@ class sampleGenerator(object):
         self.mu = mu
         self.sigma = sigma
         self.sparseness = sparseness
-        self.user_attr = self.random_matrix(self.n_user, self.n_feature)
-        self.item_attr = self.random_matrix(self.n_item, self.n_feature)
-        self.user_prefer = self.random_matrix(self.n_user, self.n_feature)
-        self.item_prefer = self.random_matrix(self.n_item, self.n_feature)        
+        self.user_attr = self.random_matrix(self.n_user, self.n_feature, one_hot=True)
+        self.item_attr = self.random_matrix(self.n_item, self.n_feature, one_hot=True)
+        self.user_prefer = self.random_matrix(self.n_user, self.n_feature, one_hot=False)
+        self.item_prefer = self.random_matrix(self.n_item, self.n_feature, one_hot=False)        
         self.noise = np.random.normal(loc=0, scale=0.1, size=(self.n_user, self.n_item)) 
         self.user_rank = np.matmul(self.user_prefer, self.item_attr.T)
         self.item_rank = np.matmul(self.item_prefer, self.user_attr.T)
         self.q_matrix = (self.user_rank + self.item_rank) / 2 + self.noise
 
-    def random_matrix(self, row, column):
-        # return np.random.normal(
-            # loc=self.mu, scale=self.sigma, size=(row * column)).reshape(row, column)
-        return np.random.randint(low=0, high=2, size=(row, column))
+    def random_matrix(self, row, column, one_hot=False):
+        # return np.random.normal(loc=self.mu, scale=self.sigma, size=(row * column)).reshape(row, column)
+        if one_hot:
+            return np.random.randint(low=0, high=2, size=(row, column))
+        else:
+            return np.random.rand(row, column)
 
     def generate_sample(self):
         m = self.q_matrix.copy()

@@ -127,15 +127,15 @@ class BPR(object):
                 neg_item = numpy.random.randint(self._n_items)
             if self._match_weight == 100:
                 if self._posi_weight == 100:
+                    sgd_pos_items.append(match_item)
+                    sgd_neg_items.append(neg_item)                                                                               
 # =============================================================================
 #                     sgd_pos_items.append(match_item)
 #                     sgd_neg_items.append(pos_item)                    
 # =============================================================================
-
-                    sgd_pos_items.append(match_item)
-                    sgd_neg_items.append(neg_item)                                                           
-                    sgd_pos_items.append(pos_item)
-                    sgd_neg_items.append(neg_item)                    
+                    if numpy.random.rand() < 0.2:
+                        sgd_pos_items.append(pos_item)
+                        sgd_neg_items.append(neg_item)                    
                 else:
                     neg_item = numpy.random.randint(self._n_items)
                     while neg_item in set(self._match_dict[sgd_user]):
