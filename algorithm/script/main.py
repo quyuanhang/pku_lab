@@ -21,12 +21,12 @@ def rec_test(train_dict, test_dict, rank_dict, topn, auc_list, alg_name):
     return frame
 
 def step():
-    sample_generator = gdata.sampleGenerator(n_user=1000, n_item=1000, sparseness=0.001)
-    sample_generator.sava_sample(t_size=0.5, save_path='../data/')
+# =============================================================================
+#     sample_generator = gdata.sampleGenerator(n_user=1000, n_item=1000, sparseness=0.001)
+#     sample_generator.sava_sample(t_size=0.5, save_path='../data/')
+# =============================================================================
 
-# =============================================================================
-#     cdata.run()
-# =============================================================================
+    cdata.run()
 
     train_frame = pd.read_csv('../data/male_train.csv')
     test_frame = pd.read_csv('../data/male_test.csv')
@@ -41,7 +41,7 @@ def step():
     ibcf_frame = rec_test(train_dict, test_dict, ibcf_rec, topn, auc_list, 'ibcf')
 
     # algorithm
-    algorithm = Algorithm(train_frame, mweight=100, pweight=100, epochs=3000)
+    algorithm = Algorithm(train_frame, mweight=4, pweight=100, epochs=3000)
     alg_rec = algorithm.predict(mode='dict')
     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
 
@@ -110,32 +110,3 @@ if __name__ == '__main__':
 
     test.top_f1(filter_frame.iloc[:, :-1], top_list=['top 5', 'top 10', 'top 50'], save='../log/f1.png')
 
-# =============================================================================
-#     train_frame = pd.read_csv('../data/male_train.csv')
-#     test_frame = pd.read_csv('../data/male_test.csv')
-#     test_dict = test.data_format(test_frame, min_rate=2)
-#     train_dict = test.data_format(train_frame, min_rate=2)
-#     topn = 100
-#     auc_list = list()
-# 
-#     
-#     # ibcf
-#     my_ibcf = IBCF(train_frame)
-#     ibcf_rec = my_ibcf.recommend_all(topn)
-#     ibcf_frame = rec_test(train_dict, test_dict, ibcf_rec, topn, auc_list, 'ibcf')
-# 
-#     # algorithm
-#     algorithm = Algorithm(train_frame, mweight=4, pweight=1, epochs=5000)
-#     alg_rec = algorithm.predict(mode='dict', top=topn)
-#     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
-# 
-#     #bpr
-#     bpr = Algorithm(train_frame, mweight=100, pweight=0, epochs=5000)
-#     bpr_rec = bpr.predict(mode='dict', top=topn)
-#     bpr_frame = rec_test(train_dict, test_dict, bpr_rec, topn, auc_list, 'bpr')
-# 
-#     frame = pd.concat([ibcf_frame, bpr_frame, alg_frame])
-# 
-#     test.p_r_curve(frame, line=True, point=True)
-#     
-# =============================================================================
