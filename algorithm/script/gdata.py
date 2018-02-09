@@ -15,11 +15,7 @@ class sampleGenerator(object):
         self.user_attr = self.random_matrix(self.n_user, self.n_feature, one_hot=True)
         self.item_attr = self.random_matrix(self.n_item, self.n_feature, one_hot=True)
         self.user_prefer = self.random_matrix(self.n_user, self.n_feature, one_hot=True)
-<<<<<<< HEAD
         self.item_prefer = self.random_matrix(self.n_item, self.n_feature, one_hot=True)        
-=======
-        self.item_prefer = self.random_matrix(self.n_item, self.n_feature, one_hot=True)       
->>>>>>> d47ee43baab89ba0a3e356730a777335535e2851
         self.noise = np.random.normal(loc=0, scale=0.1, size=(self.n_user, self.n_item)) 
         self.user_rank = np.matmul(self.user_prefer, self.item_attr.T)
         self.item_rank = np.matmul(self.item_prefer, self.user_attr.T)

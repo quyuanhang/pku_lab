@@ -98,15 +98,11 @@ if __name__ == '__main__':
         shutil.rmtree('../log/')
     os.makedirs('../log/')
     
-<<<<<<< HEAD
 # =============================================================================
 #     frame = step()
 # =============================================================================
     
     loop(3)
-=======
-    loop(5)
->>>>>>> d47ee43baab89ba0a3e356730a777335535e2851
 
     frame = log_reduce()
     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])
