@@ -60,30 +60,33 @@ def run():
     print('users with matches', len(set(match_frame.iloc[:, 0])))
 
 
+    def count_degree(frame, col):
+        user = frame.columns[col]
+        user_degree_series = frame.iloc[:, col]
+        user_degree_frame = pd.DataFrame(user_degree_series.value_counts())
+        user_degree_frame.columns = ['degree']
+        user_degree_frame = pd.merge(frame, user_degree_frame,
+                                    left_on=user, right_index=True)
+        return user_degree_frame
+
+
     def filter_old(frame, N=0, M=100000):
         # 筛选老用户
-        def count_degree(frame, col):
-            user = frame.columns[col]
-            user_degree_series = frame.iloc[:, col]
-            user_degree_frame = pd.DataFrame(user_degree_series.value_counts())
-            user_degree_frame.columns = ['degree']
-            user_degree_frame = pd.merge(frame, user_degree_frame,
-                                        left_on=user, right_index=True)
-            return user_degree_frame
         frame = count_degree(frame, 0)
-        # frame = count_degree(frame, 1)
-        old_frame = frame[(frame['degree'] >= N) & (frame['degree'] <= M)]
-        print('rest users', len(set(old_frame.iloc[:, 0])))
-        print('rest items', len(set(old_frame.iloc[:, 1])))
-        print('rest matches', len(old_frame))
+        frame = count_degree(frame, 1)
+        old_frame = frame[(frame['degree_x'] >= N) & (frame['degree_y'] >= N)]
+        # print('rest users', len(set(old_frame.iloc[:, 0])))
+        # print('rest items', len(set(old_frame.iloc[:, 1])))
+        # print('rest matches', len(old_frame))
         return old_frame.iloc[:, :3]
 
 
     def iter_filter_old(frame, N=0, M=100000, step=100):
         for i in range(step):
             frame = filter_old(frame.iloc[:, :3], N, M)
-            if (frame['degree_x'].min() >= N and
-                    frame['degree_y'].min() >= N):
+            frame = count_degree(frame, 0)
+            frame = count_degree(frame, 1)        
+            if (frame['degree_x'].min() >= N and frame['degree_y'].min() >= N):
                 break
         print('rest users', len(set(frame.iloc[:, 0])))
         print('rest items', len(set(frame.iloc[:, 1])))
@@ -92,30 +95,31 @@ def run():
 
 
     # 输出迭代消去的数据损失量
-    for i in [5]:
+    for i in [3]:
         print('least match for old user', i)
-        old_match_frame = filter_old(match_frame, i)
+        old_match_frame = iter_filter_old(match_frame, i)
         old_male_set = set(old_match_frame['male'])
         old_female_set = set(old_match_frame['female'])
 
 
-    def build_pos_data(old_male_set, male_rating_dict, male_match_dict, col):
+    def build_pos_data(old_male_set, old_female_set, male_rating_dict, male_match_dict, col):
         # 组合match和positive
         positive_data = list()
         for user in old_male_set:
-            items = male_rating_dict[user]
-            for item in items:
-                if item in male_match_dict[user]:
-                    continue
-                else:
-                    positive_data.append([user, item, 1])
+            items = set(male_rating_dict[user].keys()) & old_female_set - set(male_match_dict[user].keys())
+            positive_data.extend([[user, item, 1] for item in items])
+            # for item in items:
+                # if item in male_match_dict[user]:
+                #     continue
+                # else:
+                #     positive_data.append([user, item, 1])
 
         return pd.DataFrame(positive_data, columns=col)
 
     male_posi_data = build_pos_data(
-        old_male_set, male_rating_dict, match_dict, col=['male', 'female', 'rate'])
+        old_male_set, old_female_set, male_rating_dict, match_dict, col=['male', 'female', 'rate'])
     female_posi_data = build_pos_data(
-        old_male_set, famale_rating_dict, match_dict, col=['male', 'female', 'rate'])
+        old_male_set, old_female_set, famale_rating_dict, match_dict, col=['male', 'female', 'rate'])
     print('male positive num', len(male_posi_data))
     print('female positive num', len(female_posi_data))
 

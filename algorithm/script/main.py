@@ -41,19 +41,19 @@ def step():
     ibcf_frame = rec_test(train_dict, test_dict, ibcf_rec, topn, auc_list, 'ibcf')
 
     # algorithm
-    algorithm = Algorithm(train_frame, mweight=4, pweight=100, epochs=3000)
+    algorithm = Algorithm(train_frame, mweight=4, pweight=1, epochs=1000)
     alg_rec = algorithm.predict(mode='dict')
     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
 
     #bpr
-    bpr = Algorithm(train_frame, mweight=100, pweight=0, epochs=3000)
+    bpr = Algorithm(train_frame, mweight=1, pweight=0, epochs=1000)
     bpr_rec = bpr.predict(mode='dict')
     bpr_frame = rec_test(train_dict, test_dict, bpr_rec, topn, auc_list, 'bpr')
 
     #csvd
     item_train_frame = pd.read_csv('../data/female_train.csv')
     csvd = CSVD(train_frame, item_train_frame)
-    csvd.train(steps=5000)
+    csvd.train(steps=1000)
     csvd_rec = csvd.predict()
     csvd_frame = rec_test(train_dict, test_dict, csvd_rec, topn, auc_list, 'csvd')
 
@@ -102,7 +102,7 @@ if __name__ == '__main__':
 #     frame = step()
 # =============================================================================
     
-    loop(1)
+    loop(3)
 
     frame = log_reduce()
     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])

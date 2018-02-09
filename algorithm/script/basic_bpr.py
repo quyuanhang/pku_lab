@@ -1,5 +1,6 @@
-
+from tqdm import tqdm
 import heapq
+import math
 import time
 import sys
 import numpy
@@ -83,32 +84,25 @@ class BPR(object):
         sgd_users, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
             n_sgd_samples)
         z = 0
-        t2 = t1 = t0 = time.time()
-        while (z + 1) * batch_size < n_sgd_samples * (self._sgd_weight):
+        t0 = time.time()
+        print('\rsgd Processed')
+        for z in tqdm(range(math.floor(n_sgd_samples * self._sgd_weight / batch_size - 1))):
             self.train_sgd(
                 sgd_users[z * batch_size: (z + 1) * batch_size],
                 sgd_pos_items[z * batch_size: (z + 1) * batch_size],
                 sgd_neg_items[z * batch_size: (z + 1) * batch_size]
             )
-            z += 1
-            t2 = time.time()
-            sys.stderr.write("\rsgd Processed %s ( %.2f%% ) in %.4f seconds" % (
-                str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
-            sys.stderr.flush()
-
-        while (z + 1) * batch_size < n_sgd_samples:
+        print('\rada Processed')
+        _z = z
+        for z in tqdm(range(_z, math.floor(n_sgd_samples / batch_size)-2)):
             self.train_ada(
                 sgd_users[z * batch_size: (z + 1) * batch_size],
                 sgd_pos_items[z * batch_size: (z + 1) * batch_size],
                 sgd_neg_items[z * batch_size: (z + 1) * batch_size]
             )
-            z += 1
-            t2 = time.time()
-            sys.stderr.write("\rada Processed %s ( %.2f%% ) in %.4f seconds" % (
-                str(z * batch_size), 100.0 * float(z * batch_size) / n_sgd_samples, t2 - t1))
-            sys.stderr.flush()
 
         if n_sgd_samples > 0:
+            t2 = time.time()
             sys.stderr.write("\nTotal training time %.2f seconds; %e per sample\n" % (
                 t2 - t0, (t2 - t0) / n_sgd_samples))
             sys.stderr.flush()
@@ -118,40 +112,31 @@ class BPR(object):
             "Generating %s random training samples\n" % str(n_samples))
         sgd_users = numpy.array(list(self._train_users))[
             numpy.random.randint(len(self._train_users), size=n_samples)]
-        sgd_pos_items, sgd_neg_items = [], []
-        for sgd_user in sgd_users:
-            match_item = self._match_dict[sgd_user][numpy.random.randint(len(self._match_dict[sgd_user]))]            
-            pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
+        sgd_users_update, sgd_pos_items, sgd_neg_items = [], [], []
+        for sgd_user in tqdm(sgd_users):
+            # 生成三类item
+            match_item = self._match_dict[sgd_user][numpy.random.randint(len(self._match_dict[sgd_user]))]
+            dis_neg_pool = set(self._match_dict[sgd_user])
+            if self._posi_weight != 0:
+                pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
+                dis_neg_pool |= set(self._pos_dict[sgd_user])
             neg_item = numpy.random.randint(self._n_items)
-            while neg_item in set(self._pos_dict[sgd_user]) | set(self._match_dict[sgd_user]):
+            while neg_item in dis_neg_pool:
                 neg_item = numpy.random.randint(self._n_items)
-            if self._match_weight == 100:
-                if self._posi_weight == 100:
-                    sgd_pos_items.append(match_item)
-                    sgd_neg_items.append(neg_item)                                                                               
-# =============================================================================
-#                     sgd_pos_items.append(match_item)
-#                     sgd_neg_items.append(pos_item)                    
-# =============================================================================
-                    if numpy.random.rand() < 0.2:
-                        sgd_pos_items.append(pos_item)
-                        sgd_neg_items.append(neg_item)                    
-                else:
-                    neg_item = numpy.random.randint(self._n_items)
-                    while neg_item in set(self._match_dict[sgd_user]):
-                        neg_item = numpy.random.randint(self._n_items)
-                    sgd_pos_items.append(match_item)
-                    sgd_neg_items.append(neg_item)                                       
-            else:
-                p = len(self._match_dict[sgd_user]) / len(self._pos_dict[sgd_user]) * self._match_weight            
-                r = numpy.random.random()
-                if r < p:
-                    sgd_pos_items.append(match_item)
-                    sgd_neg_items.append(neg_item)
-                else:
-                    sgd_pos_items.append(pos_item)
-                    sgd_neg_items.append(neg_item)
-        return sgd_users, sgd_pos_items, sgd_neg_items
+            # 写入样本列表
+            if numpy.random.rand() < self._match_weight:
+                sgd_users_update.append(sgd_user)                        
+                sgd_pos_items.append(match_item)
+                sgd_neg_items.append(neg_item)
+            if self._posi_weight > 0 and numpy.random.rand() < self._posi_weight:
+                sgd_users_update.append(sgd_user)                        
+                sgd_pos_items.append(pos_item)
+                sgd_neg_items.append(neg_item)
+            if self._posi_weight < 0 and numpy.random.rand() < (-self._posi_weight):
+                sgd_users_update.append(sgd_user)                        
+                sgd_pos_items.append(match_item)
+                sgd_neg_items.append(pos_item)
+        return sgd_users_update, sgd_pos_items, sgd_neg_items
 
     def predictions(self, user_index):
         w = self.W.get_value()
@@ -182,9 +167,12 @@ class BPR(object):
         return rank_dict
 
 
-    def top_predictions(self, user_index, topn=10):
+    def top_predictions(self, user_index, topn=False):
         rank_list = enumerate(self.predictions(user_index))
-        top_list = heapq.nlargest(topn, rank_list, key=lambda x: x[1])
+        if not topn:
+            top_list = rank_list
+        else:
+            top_list = heapq.nlargest(topn, rank_list, key=lambda x: x[1])
         return top_list
 
     def _data_to_dict(self, data):

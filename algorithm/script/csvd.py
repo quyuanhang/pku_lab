@@ -113,7 +113,10 @@ class CSVD(object):
         for user in tqdm(range(self.nu)):
             rank_list = user_prediction[user]
             item_rank = map(lambda x: (self.index_to_item[x[0]], x[1]), enumerate(rank_list))
-            topn_item_rank = heapq.nlargest(topn, item_rank, key=lambda x: x[1])
+            if not topn:
+                topn_item_rank = item_rank
+            else:
+                topn_item_rank = heapq.nlargest(topn, item_rank, key=lambda x: x[1])
             rank_dict[self.index_to_user[user]] = dict(topn_item_rank)
         return rank_dict
 

@@ -1,5 +1,6 @@
 # 內建库
 import sys
+import heapq
 # 第三方库
 import pandas as pd
 import numpy as np
@@ -62,9 +63,12 @@ def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='bas
         user_sample = user_array
     for exp in user_sample:
         job_rank_dict = recommend_dict[exp]
-        job_rank = sorted(job_rank_dict.items(),
-                            key=lambda x: x[1], reverse=True)
-        rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
+# =============================================================================
+#         job_rank = sorted(job_rank_dict.items(),key=lambda x: x[1], reverse=True)
+#         rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
+# =============================================================================
+        job_rank = heapq.nlargest(top, job_rank_dict.items(), key=lambda x: x[1])  
+        rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]]
         rec_set = set(rec)
         positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
         tp += len(rec_set & positive_set)
