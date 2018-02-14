@@ -122,8 +122,8 @@ class BPR(object):
                 dis_neg_pool |= set(self._pos_dict[sgd_user])
 
 # 测试代码===========================================================================================
-            pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
-            dis_neg_pool |= set(self._pos_dict[sgd_user])
+            # pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
+            # dis_neg_pool |= set(self._pos_dict[sgd_user])
 # ==================================================================================================
                 
             neg_item = numpy.random.randint(self._n_items)

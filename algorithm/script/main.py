@@ -7,6 +7,8 @@ import pandas as pd
 import gdata
 import cdata
 import test
+import basic_bpr
+import boosting_bpr
 from ibcf import IBCF
 from algorithm import Algorithm
 from csvd import CSVD
@@ -41,12 +43,12 @@ def step():
     ibcf_frame = rec_test(train_dict, test_dict, ibcf_rec, topn, auc_list, 'ibcf')
 
     # algorithm
-    algorithm = Algorithm(train_frame, mweight=4, pweight=1, epochs=1000)
+    algorithm = Algorithm(train_frame, mweight=0.2, pweight=1, epochs=1000, model=boosting_bpr.BPR)
     alg_rec = algorithm.predict(mode='dict')
     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
 
     #bpr
-    bpr = Algorithm(train_frame, mweight=1, pweight=0, epochs=1000)
+    bpr = Algorithm(train_frame, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
     bpr_rec = bpr.predict(mode='dict')
     bpr_frame = rec_test(train_dict, test_dict, bpr_rec, topn, auc_list, 'bpr')
 
@@ -102,7 +104,7 @@ if __name__ == '__main__':
 #     frame = step()
 # =============================================================================
     
-    loop(3)
+    loop(1)
 
     frame = log_reduce()
     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])

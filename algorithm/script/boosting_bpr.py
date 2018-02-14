@@ -59,6 +59,7 @@ class BPR(object):
                         self._lambda * (self.H[j] ** 2).sum(axis=1) -
                         self._lambda * (self.H[k] ** 2).sum(axis=1) -
                         self._lambda * (self.B[i] ** 2 + self.B[j] ** 2 + self.B[k] ** 2))
+                        # self._lambda * (self.B[i] ** 2 + self.B[k] ** 2))
         cost = - obj_uij
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
