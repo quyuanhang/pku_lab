@@ -55,7 +55,7 @@ def step():
     #csvd
     item_train_frame = pd.read_csv('../data/female_train.csv')
     csvd = CSVD(train_frame, item_train_frame)
-    csvd.train(steps=1000)
+    csvd.train(steps=5000)
     csvd_rec = csvd.predict()
     csvd_frame = rec_test(train_dict, test_dict, csvd_rec, topn, auc_list, 'csvd')
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 #     frame = step()
 # =============================================================================
     
-    loop(1)
+    loop(3)
 
     frame = log_reduce()
     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])

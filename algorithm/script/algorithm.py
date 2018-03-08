@@ -1,5 +1,5 @@
 # 內建库
-
+import time
 # 第三方库
 import pandas as pd
 import numpy as np
@@ -12,7 +12,7 @@ import gdata
 import cdata
 
 class Algorithm(object):
-    def __init__(self, train_frame, mweight, pweight, epochs, model):
+    def __init__(self, train_frame, bweight, mweight, pweight, epochs, model):
         male_train_raw = train_frame.values
         male_list = list(set(male_train_raw[male_train_raw[:, 2]==2, 0]))
         female_list = list(set(male_train_raw[:, 1]))
@@ -25,7 +25,7 @@ class Algorithm(object):
             for i in male_train_raw if i[0] in male_to_index and i[1] in female_to_index])
         print('\nproblem space:', len(male_list), len(female_list))
         self.model = model(rank=50, n_users=len(male_to_index),
-                    n_items=len(female_to_index), match_weight=mweight, posi_weight=pweight)    
+                    n_items=len(female_to_index), base_weight=bweight, match_weight=mweight, posi_weight=pweight)    
         self.model.train(self.male_train, epochs=epochs)
 
     def predict(self, mode='dict', top=False):
@@ -96,22 +96,27 @@ if __name__ == '__main__':
         return train_frame, train_dict, test_dict
   
     def reduce_test(loop):
-        reduce_dict = dict()
+        reducel = list()
         for step in range(loop):
+            l = list()        
             train_frame, train_dict, test_dict = refresh_data()
-            m_weight_list = [i/10 for i in range(0, 11)]
-            p_weight_list = [i/10 for i in range(0, 11)]
-            frame = pd.DataFrame(index=m_weight_list, columns=p_weight_list)
-            for i in m_weight_list:
-                for j in p_weight_list:
-                    algorithm = Algorithm(train_frame, mweight=i, pweight=j, epochs=1000, model=boosting_bpr.BPR)
-                    rank_dict = algorithm.predict(mode='dict')
-                    auc = test.auc(train_dict, rank_dict, test_dict)
-                    frame[j][i] = auc
-            reduce_dict[step] = frame
-        df = pd.Panel(reduce_dict).mean(axis=0)
-        return df
+            b_weight_list = [i/5 for i in range(6)]
+            m_weight_list = [i/5 for i in range(6)]
+            p_weight_list = [i/5 for i in range(6)]
+            # frame = pd.DataFrame(index=m_weight_list, columns=p_weight_list)
+            for k in b_weight_list:
+                for i in m_weight_list:
+                    for j in p_weight_list:
+                        algorithm = Algorithm(train_frame, bweight=k, mweight=i, pweight=j, epochs=1000, model=boosting_bpr.BPR)
+                        rank_dict = algorithm.predict(mode='dict')
+                        auc = test.auc(train_dict, rank_dict, test_dict)
+                        l.append(auc)
+            reducel.append(l)
+        r = np.array(reducel).mean(axis=0)
+        return r
     
-    frame = reduce_test(1)
-    frame.to_csv('../log/mat.csv')
+    frame = pd.DataFrame(reduce_test(3))
+    t = time.ctime()
+    fname = t[4:16].replace(' ', '-').replace(':', '-')
+    frame.to_csv('../savelog/mat%s.csv'%(fname))
 
