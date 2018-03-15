@@ -86,7 +86,7 @@ if __name__ == '__main__':
 #         sample_generator.sava_sample(t_size=0.5, save_path='../data/')
 # =============================================================================
 
-        cdata.run()
+#        cdata.run()
 
         train_frame = pd.read_csv('../data/male_train.csv')    
         test_frame = pd.read_csv('../data/male_test.csv')
@@ -95,25 +95,42 @@ if __name__ == '__main__':
 
         return train_frame, train_dict, test_dict
   
+#    def reduce_test(loop):
+#        reducel = list()
+#        for step in range(loop):
+#            l = list()        
+#            train_frame, train_dict, test_dict = refresh_data()
+#            b_weight_list = [i/5 for i in range(6)]
+#            m_weight_list = [i/5 for i in range(6)]
+#            p_weight_list = [i/5 for i in range(6)]
+#            # frame = pd.DataFrame(index=m_weight_list, columns=p_weight_list)
+#            for k in b_weight_list:
+#                for i in m_weight_list:
+#                    for j in p_weight_list:
+#                        algorithm = Algorithm(train_frame, bweight=k, mweight=i, pweight=j, epochs=1000, model=boosting_bpr.BPR)
+#                        rank_dict = algorithm.predict(mode='dict')
+#                        auc = test.auc(train_dict, rank_dict, test_dict)
+#                        l.append(auc)
+#            reducel.append(l)
+#        r = np.array(reducel).mean(axis=0)
+#        return r
+        
     def reduce_test(loop):
-        reducel = list()
+        reduce_dict = dict()
         for step in range(loop):
-            l = list()        
             train_frame, train_dict, test_dict = refresh_data()
-            b_weight_list = [i/5 for i in range(6)]
-            m_weight_list = [i/5 for i in range(6)]
-            p_weight_list = [i/5 for i in range(6)]
-            # frame = pd.DataFrame(index=m_weight_list, columns=p_weight_list)
-            for k in b_weight_list:
-                for i in m_weight_list:
-                    for j in p_weight_list:
-                        algorithm = Algorithm(train_frame, bweight=k, mweight=i, pweight=j, epochs=1000, model=boosting_bpr.BPR)
-                        rank_dict = algorithm.predict(mode='dict')
-                        auc = test.auc(train_dict, rank_dict, test_dict)
-                        l.append(auc)
-            reducel.append(l)
-        r = np.array(reducel).mean(axis=0)
-        return r
+            m_weight_list = [i/10 for i in range(0, 11)]
+            p_weight_list = [i/10 for i in range(0, 11)]
+            frame = pd.DataFrame(index=m_weight_list, columns=p_weight_list)
+            for i in m_weight_list:
+                for j in p_weight_list:
+                    algorithm = Algorithm(train_frame, bweight=1, mweight=i, pweight=j, epochs=1000, model=boosting_bpr.BPR)
+                    rank_dict = algorithm.predict(mode='dict')
+                    auc = test.auc(train_dict, rank_dict, test_dict)
+                    frame[j][i] = auc
+            reduce_dict[step] = frame
+        df = pd.Panel(reduce_dict).mean(axis=0)
+        return df
     
     frame = pd.DataFrame(reduce_test(3))
     t = time.ctime()

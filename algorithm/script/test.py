@@ -54,7 +54,7 @@ def auc(train_dict, rank_dict, test_dict):
     return np.mean(auc_values)  
 
 def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=1):
-    tp, fp, fn = 0, 0, 0
+    tp, p, r = 0, 0, 0
     precision_recall_list = list()
     user_array = np.array(list(set(lable_dict.keys()) & set(recommend_dict.keys())))
     if sam < 1:
@@ -67,21 +67,30 @@ def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='bas
 #         job_rank = sorted(job_rank_dict.items(),key=lambda x: x[1], reverse=True)
 #         rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]][:top]
 # =============================================================================
-        job_rank = heapq.nlargest(top, job_rank_dict.items(), key=lambda x: x[1])  
-        rec = [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]]
+        rec = list()
+        heap_top = 0
+        while(len(rec)) < top:
+            last_heap_top, heap_top = heap_top, heap_top + 2 * top
+            job_rank = heapq.nlargest(heap_top, job_rank_dict.items(), key=lambda x: x[1])[last_heap_top : heap_top]
+            rec += [j_r[0] for j_r in job_rank if j_r[0] not in train_dict[exp]]
+            if heap_top > len(job_rank_dict):
+                break            
+        rec = rec[:top]
         rec_set = set(rec)
         positive_set = set(lable_dict[exp].keys()) - set(train_dict[exp].keys())
-        tp += len(rec_set & positive_set)
-        fp += len(rec_set - positive_set)
-        fn += len(positive_set - rec_set)
         if len(positive_set) > 0:
             if mode == 'max':
                 precision = 1 if rec_set & positive_set else 0
                 recall = 1 if rec_set & positive_set else 0
             else:
-                precision = len(rec_set & positive_set) / (len(rec_set)+0.1)
+#                precision = len(rec_set & positive_set) / (len(rec_set)+0.1)
+                precision = len(rec_set & positive_set) / top
                 recall = len(rec_set & positive_set) / len(positive_set)
+                tp+=len(rec_set & positive_set)
+                p+=len(positive_set)
+                r+=top
             precision_recall_list.append([precision, recall])
+#    print(tp,p,r)
     if (mode == 'base') or (mode == 'max'):
         df = pd.DataFrame(precision_recall_list, columns=[
                           'precision', 'recall'])

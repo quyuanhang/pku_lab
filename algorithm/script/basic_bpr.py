@@ -11,7 +11,7 @@ import theano_lstm
 
 class BPR(object):
 
-    def __init__(self, rank, n_users, n_items, base_weight=1, match_weight=1, posi_weight=1, lambda_all=0.01, learning_rate=0.1, sgd_weight=0.8):
+    def __init__(self, rank, n_users, n_items, base_weight=1, match_weight=1, posi_weight=0, lambda_all=0.01, learning_rate=0.1, sgd_weight=0.8):
         self._rank = rank
         self._match_weight = match_weight
         self._posi_weight = posi_weight

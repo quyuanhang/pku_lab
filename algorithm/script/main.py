@@ -23,12 +23,10 @@ def rec_test(train_dict, test_dict, rank_dict, topn, auc_list, alg_name):
     return frame
 
 def step():
-# =============================================================================
-#     sample_generator = gdata.sampleGenerator(n_user=1000, n_item=1000, sparseness=0.001)
-#     sample_generator.sava_sample(t_size=0.5, save_path='../data/')
-# =============================================================================
+#    sample_generator = gdata.sampleGenerator(n_user=1000, n_item=1000, sparseness=0.001)
+#    sample_generator.sava_sample(t_size=0.5, save_path='../data/')
 
-    cdata.run()
+#    cdata.run()
 
     train_frame = pd.read_csv('../data/male_train.csv')
     test_frame = pd.read_csv('../data/male_test.csv')
@@ -43,12 +41,12 @@ def step():
     ibcf_frame = rec_test(train_dict, test_dict, ibcf_rec, topn, auc_list, 'ibcf')
 
     # algorithm
-    algorithm = Algorithm(train_frame, mweight=0.2, pweight=1, epochs=1000, model=boosting_bpr.BPR)
+    algorithm = Algorithm(train_frame, bweight=1, mweight=0.4, pweight=0.1, epochs=1000, model=boosting_bpr.BPR)
     alg_rec = algorithm.predict(mode='dict')
     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
 
     #bpr
-    bpr = Algorithm(train_frame, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
+    bpr = Algorithm(train_frame, bweight=0, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
     bpr_rec = bpr.predict(mode='dict')
     bpr_frame = rec_test(train_dict, test_dict, bpr_rec, topn, auc_list, 'bpr')
 
@@ -96,23 +94,36 @@ def filter_log(frame):
     return filtered
 
 if __name__ == '__main__':
-    if os.path.exists('../log/'):
-        shutil.rmtree('../log/')
-    os.makedirs('../log/')
-    
-# =============================================================================
-#     frame = step()
-# =============================================================================
-    
-    loop(3)
+     if os.path.exists('../log/'):
+         shutil.rmtree('../log/')
+     os.makedirs('../log/')
 
-    frame = log_reduce()
-    frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])
-    frame.to_csv('../log/reduce.csv')
-    test.p_r_curve(frame.iloc[:, :-1], line=True, save='../log/reduce.png')
+     loop(1)
 
-    filter_frame = filter_log(frame)
-    filter_frame.to_csv('../log/final.csv')    
+     frame = log_reduce()
+     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])
+     frame.to_csv('../log/reduce.csv')
+     test.p_r_curve(frame.iloc[:, :-1], line=True, save='../log/reduce.png')
 
-    test.top_f1(filter_frame.iloc[:, :-1], top_list=['top 5', 'top 10', 'top 50'], save='../log/f1.png')
+     filter_frame = filter_log(frame)
+     filter_frame.to_csv('../log/final.csv')    
 
+     test.top_f1(filter_frame.iloc[:, :-1], top_list=['top 5', 'top 10', 'top 50'], save='../log/f1.png')
+
+
+#    train_frame = pd.read_csv('../data/male_train.csv')
+#    test_frame = pd.read_csv('../data/male_test.csv')
+#    test_dict = test.data_format(test_frame, min_rate=2)
+#    train_dict = test.data_format(train_frame, min_rate=2)
+#    topn = 100
+#    auc_list = list()
+#
+#    # algorithm
+#    algorithm = Algorithm(train_frame, bweight=1, mweight=0.4, pweight=0.1, epochs=1000, model=boosting_bpr.BPR)
+#    alg_rec = algorithm.predict(mode='dict')
+#    pr1=test.precision_recall(alg_rec, test_dict, train_dict, top=50)
+#
+#    #bpr
+#    bpr = Algorithm(train_frame, bweight=0, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
+#    bpr_rec = bpr.predict(mode='dict')
+#    pr2=test.precision_recall(bpr_rec, test_dict, train_dict, top=50)
