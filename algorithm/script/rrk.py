@@ -143,8 +143,8 @@ class Ranking():
         self._session = tf.Session()
         self._session.run(tf.global_variables_initializer())        
         
-        # for epoch in tqdm(range(epoches)):
-        for epoch in range(epoches):
+        for epoch in tqdm(range(epoches)):
+#        for epoch in range(epoches):
             for step in range(steps_per_epoche):
                 sample_banch = self.uniform_user_sampling(banch_size)
                 _sgd, _loss = self._session.run([sgd, loss], feed_dict={
@@ -152,9 +152,10 @@ class Ranking():
                         i: sample_banch[:, 1],
                         j: sample_banch[:, 2],
                         k: sample_banch[:, 3]})
-            print('sgd epoche:', epoch, 'loss', _loss)
+#            print('sgd epoche:', epoch, 'loss', _loss)
 
-        for epoch in range(epoches * 0.5):
+        for epoch in tqdm(range(epoches // 2)):    
+#        for epoch in range(epoches // 2):
             for step in range(steps_per_epoche):
                 sample_banch = self.uniform_user_sampling(banch_size)
                 _ada, _loss = self._session.run([ada, loss], feed_dict={
@@ -162,7 +163,7 @@ class Ranking():
                         i: sample_banch[:, 1],
                         j: sample_banch[:, 2],
                         k: sample_banch[:, 3]})
-            print('ada epoche:', epoch, 'loss', _loss)            
+#            print('ada epoche:', epoch, 'loss', _loss)            
         
         return
 
@@ -186,7 +187,7 @@ class Ranking():
 if __name__ == '__main__':
     train_frame = pd.read_csv('../data/male_train.csv')  
     algorithm = Ranking(train_frame.values)      
-    algorithm.train_model(banch_size=100, steps=50000, epoches=100)
+    algorithm.train_model(banch_size=100, steps=5000, epoches=100)
     alg_rec = algorithm.predict(topn=50)
 
     test_frame = pd.read_csv('../data/male_test.csv')
