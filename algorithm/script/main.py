@@ -41,7 +41,7 @@ def step():
     ibcf_frame = rec_test(train_dict, test_dict, ibcf_rec, topn, auc_list, 'ibcf')
 
     # algorithm
-    algorithm = Algorithm(train_frame, bweight=1, mweight=0.4, pweight=0.1, epochs=1000, model=boosting_bpr.BPR)
+    algorithm = Algorithm(train_frame, bweight=1, mweight=0.1, pweight=0.9, epochs=1000, model=boosting_bpr.BPR)
     alg_rec = algorithm.predict(mode='dict')
     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
 
@@ -53,7 +53,7 @@ def step():
     #csvd
     item_train_frame = pd.read_csv('../data/female_train.csv')
     csvd = CSVD(train_frame, item_train_frame)
-    csvd.train(steps=5000)
+    csvd.train(steps=1000)
     csvd_rec = csvd.predict()
     csvd_frame = rec_test(train_dict, test_dict, csvd_rec, topn, auc_list, 'csvd')
 

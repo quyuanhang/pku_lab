@@ -127,7 +127,7 @@ if __name__ == '__main__':
     user_train_frame = pd.read_csv('../data/male_train.csv')    
     item_train_frame = pd.read_csv('../data/female_train.csv')
     csvd = CSVD(user_train_frame, item_train_frame)
-    csvd.train(steps=5000)
+    csvd.train(steps=1000)
     csvd_rec = csvd.predict(100)
 
     test_frame = pd.read_csv('../data/male_test.csv')

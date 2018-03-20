@@ -7,10 +7,12 @@ from tqdm import tqdm
 import test
 
 class Ranking():
-    def __init__(self, data, n_features=50, lambda_all=0.01, learning_rate=0.1):
+    def __init__(self, data, n_features=50, lambda_all=0.01, learning_rate=0.1, beta=None, gama=None):
         self._n_features = n_features
         self._lambda = lambda_all
         self._learning_rate = learning_rate
+        self._beta = beta
+        self._gama = gama
         self._match_dict, self._pos_dict = self.load_from_sparse_matrix(data)        
 
 
@@ -67,18 +69,20 @@ class Ranking():
         return np.array(samples)
 
     def init_super_weight(self):
-#        beta = []
-#        gama = []
-#        for user in self._users:
-#            m = len(self._match_dict[user])
-#            p = len(self._pos_dict[user])
-#            beta.append(m /(m + p))
-#            gama.append(p /(m + p))
-#            beta.append
-        beta = [0.001] * self._n_users
-        gama = [0.001] * self._n_items
-        self._beta = tf.constant(beta)
-        self._gama = tf.constant(gama)
+        if self._beta != None:
+            self._beta = tf.constant([self._beta] * self._n_users, dtype=tf.float32)
+            self._gama = tf.constant([self._gama] * self._n_users, dtype=tf.float32)
+        else:            
+            beta = []
+            gama = []
+            for user in self._users:
+                m = len(self._match_dict[user])
+                p = len(self._pos_dict[user])
+                beta.append(m /(m + p))
+                gama.append(p /(m + p))
+                beta.append
+            self._beta = tf.constant(beta, dtype=tf.float32)
+            self._gama = tf.constant(gama, dtype=tf.float32)
         return
         
     def init_ranking(self):
@@ -106,17 +110,17 @@ class Ranking():
         qjk = j_b - k_b + tf.reduce_sum(tf.multiply(u_emb, (j_emb - k_emb)), 1, keep_dims=True)
         qik = i_b - k_b + tf.reduce_sum(tf.multiply(u_emb, (i_emb - k_emb)), 1, keep_dims=True)
 
-#        obj = tf.log(tf.sigmoid(qik)) + tf.log(tf.sigmoid(tf.multiply(beta, qij))) + tf.log(tf.sigmoid(tf.multiply(gama, qjk)))
-        # obj = tf.log(tf.sigmoid(qik) + tf.sigmoid(tf.multiply(beta, qij)) + tf.sigmoid(tf.multiply(gama, qjk)))
+        # obj = tf.log(tf.sigmoid(qik)) + tf.multiply(beta, tf.log(tf.sigmoid(qij))) + tf.multiply(gama, tf.log(tf.sigmoid(qjk)))
+        # obj = tf.log(tf.sigmoid(qik) + tf.multiply(beta, tf.sigmoid(qij)) + tf.multiply(gama, tf.sigmoid(qjk)))
 
         # l2 = tf.add_n([
-        #     tf.reduce_sum(tf.multiply(u_emb, u_emb)), 
-        #     tf.reduce_sum(tf.multiply(i_emb, i_emb)),
-        #     tf.reduce_sum(tf.multiply(j_emb, j_emb)),
-        #     tf.reduce_sum(tf.multiply(k_emb, k_emb)),
-        #     tf.reduce_sum(tf.multiply(i_b, i_b)),
-        #     tf.reduce_sum(tf.multiply(j_b, j_b)),
-        #     tf.reduce_sum(tf.multiply(k_b, k_b))
+        #     tf.reduce_sum(tf.square(u_emb)), 
+        #     tf.reduce_sum(tf.square(i_emb)),
+        #     tf.reduce_sum(tf.square(j_emb)),
+        #     tf.reduce_sum(tf.square(k_emb))，
+        #     tf.reduce_sum(tf.square(i_b)),
+        #     tf.reduce_sum(tf.square(j_b)),
+        #     tf.reduce_sum(tf.square(k_b))
         # ])
 
         obj = tf.log(tf.sigmoid(qik))
@@ -124,6 +128,8 @@ class Ranking():
             tf.reduce_sum(tf.multiply(u_emb, u_emb)), 
             tf.reduce_sum(tf.multiply(i_emb, i_emb)),
             tf.reduce_sum(tf.multiply(k_emb, k_emb)),
+            tf.reduce_sum(tf.square(i_b)),
+            tf.reduce_sum(tf.square(k_b))            
         ])
 
         ranking_loss = l2 * self._lambda - tf.reduce_mean(obj)        
@@ -154,15 +160,15 @@ class Ranking():
                         k: sample_banch[:, 3]})
 #            print('sgd epoche:', epoch, 'loss', _loss)
 
-        for epoch in tqdm(range(epoches // 2)):    
-#        for epoch in range(epoches // 2):
-            for step in range(steps_per_epoche):
-                sample_banch = self.uniform_user_sampling(banch_size)
-                _ada, _loss = self._session.run([ada, loss], feed_dict={
-                        u: sample_banch[:, 0],
-                        i: sample_banch[:, 1],
-                        j: sample_banch[:, 2],
-                        k: sample_banch[:, 3]})
+#        for epoch in tqdm(range(epoches // 2)):    
+##        for epoch in range(epoches // 2):
+#            for step in range(steps_per_epoche):
+#                sample_banch = self.uniform_user_sampling(banch_size)
+#                _ada, _loss = self._session.run([ada, loss], feed_dict={
+#                        u: sample_banch[:, 0],
+#                        i: sample_banch[:, 1],
+#                        j: sample_banch[:, 2],
+#                        k: sample_banch[:, 3]})
 #            print('ada epoche:', epoch, 'loss', _loss)            
         
         return
@@ -170,7 +176,7 @@ class Ranking():
 
     def predict(self, topn=False):
         if not topn:
-            topn = self.n_items
+            topn = self._n_items
         rank_matrix = tf.add(
             tf.matmul(
                 self._user_emb_w, 
@@ -178,28 +184,42 @@ class Ranking():
             tf.tile([self._item_b], (self._n_users, 1)))
         top_values, top_index = self._session.run(tf.nn.top_k(rank_matrix, topn))
         rank_dict = dict()
-        print('generating csvd prediction dict')
+        print('generating rrk prediction dict')
         for user in tqdm(self._users):
             rank_dict[self._index_user[user]] = dict(zip([self._index_item[item] for item in top_index[user]], top_values[user]))
         return rank_dict
 
 
-if __name__ == '__main__':
-    train_frame = pd.read_csv('../data/male_train.csv')  
-    algorithm = Ranking(train_frame.values)      
-    algorithm.train_model(banch_size=100, steps=5000, epoches=100)
-    alg_rec = algorithm.predict(topn=50)
 
+if __name__ == '__main__':
+
+    def rec_test(train_dict, test_dict, rank_dict, topn, auc_list, alg_name):
+        precision_list, recall_list = test.precision_recall_list(
+            rank_dict, test_dict, train_dict, range(5, topn, 5))
+        frame = pd.DataFrame(precision_list + recall_list).T
+        frame.index = [alg_name]
+        auc = test.auc(train_dict, rank_dict, test_dict)
+        auc_list.append(auc)
+        return frame
+
+    train_frame = pd.read_csv('../data/male_train.csv')  
     test_frame = pd.read_csv('../data/male_test.csv')
     test_dict = test.data_format(test_frame, min_rate=2)
     train_dict = test.data_format(train_frame, min_rate=2)
+    auc_list = []
+    
+    # algorithm = Ranking(train_frame.values, beta=0.1, gama=0.9)      
+    # algorithm.train_model(banch_size=100, steps=5000, epoches=100)
+    # alg_rec = algorithm.predict(topn=50)
 
-    auc = test.auc(train_dict, alg_rec, test_dict)
-    print('auc:%0.2f'%(auc))
+    # f1 = rec_test(train_dict, test_dict, alg_rec, 50, auc_list, 'alg')
 
-    precision_list, recall_list = test.precision_recall_list(
-        alg_rec, test_dict, train_dict, range(5, 50, 5))
-    frame = pd.DataFrame(precision_list + recall_list).T
-    frame.index=['algorithm']
-    test.p_r_curve(frame, line=True, point=True)    
+    base = Ranking(train_frame.values, beta=0, gama=0)
+    base.train_model(banch_size=1000, steps=5000, epoches=100)
+    base_rec = base.predict()
+
+    f2 = rec_test(train_dict, test_dict, base_rec, 50, auc_list, 'base')
+    test.p_r_curve(f2, point=True)
+
+    # test.p_r_curve(pd.concat([f1, f2]), line=True, point=True)    
     
