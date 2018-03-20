@@ -110,29 +110,29 @@ class Ranking():
         qjk = j_b - k_b + tf.reduce_sum(tf.multiply(u_emb, (j_emb - k_emb)), 1, keep_dims=True)
         qik = i_b - k_b + tf.reduce_sum(tf.multiply(u_emb, (i_emb - k_emb)), 1, keep_dims=True)
 
-        # obj = tf.log(tf.sigmoid(qik)) + tf.multiply(beta, tf.log(tf.sigmoid(qij))) + tf.multiply(gama, tf.log(tf.sigmoid(qjk)))
+        obj = tf.log(tf.sigmoid(qik)) + tf.multiply(beta, tf.log(tf.sigmoid(qij))) + tf.multiply(gama, tf.log(tf.sigmoid(qjk)))
         # obj = tf.log(tf.sigmoid(qik) + tf.multiply(beta, tf.sigmoid(qij)) + tf.multiply(gama, tf.sigmoid(qjk)))
 
-        # l2 = tf.add_n([
-        #     tf.reduce_sum(tf.square(u_emb)), 
-        #     tf.reduce_sum(tf.square(i_emb)),
-        #     tf.reduce_sum(tf.square(j_emb)),
-        #     tf.reduce_sum(tf.square(k_emb))，
-        #     tf.reduce_sum(tf.square(i_b)),
-        #     tf.reduce_sum(tf.square(j_b)),
-        #     tf.reduce_sum(tf.square(k_b))
-        # ])
-
-        obj = tf.log(tf.sigmoid(qik))
         l2 = tf.add_n([
-            tf.reduce_sum(tf.multiply(u_emb, u_emb)), 
-            tf.reduce_sum(tf.multiply(i_emb, i_emb)),
-            tf.reduce_sum(tf.multiply(k_emb, k_emb)),
+            tf.reduce_sum(tf.square(u_emb)), 
+            tf.reduce_sum(tf.square(i_emb)),
+            tf.reduce_sum(tf.square(j_emb)),
+            tf.reduce_sum(tf.square(k_emb)),
             tf.reduce_sum(tf.square(i_b)),
-            tf.reduce_sum(tf.square(k_b))            
+            tf.reduce_sum(tf.square(j_b)),
+            tf.reduce_sum(tf.square(k_b))
         ])
 
-        ranking_loss = l2 * self._lambda - tf.reduce_mean(obj)        
+        # obj = tf.log(tf.sigmoid(qik))
+        # l2 = tf.add_n([
+        #     tf.reduce_sum(tf.multiply(u_emb, u_emb)), 
+        #     tf.reduce_sum(tf.multiply(i_emb, i_emb)),
+        #     tf.reduce_sum(tf.multiply(k_emb, k_emb)),
+        #     tf.reduce_sum(tf.square(i_b)),
+        #     tf.reduce_sum(tf.square(k_b))            
+        # ])
+
+        ranking_loss = l2 * self._lambda - tf.reduce_sum(obj)        
 
 
         return u, i, j, k, ranking_loss
@@ -208,18 +208,18 @@ if __name__ == '__main__':
     train_dict = test.data_format(train_frame, min_rate=2)
     auc_list = []
     
-    # algorithm = Ranking(train_frame.values, beta=0.1, gama=0.9)      
-    # algorithm.train_model(banch_size=100, steps=5000, epoches=100)
-    # alg_rec = algorithm.predict(topn=50)
+    algorithm = Ranking(train_frame.values)      
+    algorithm.train_model(banch_size=100, steps=5000, epoches=100)
+    alg_rec = algorithm.predict(topn=50)
 
-    # f1 = rec_test(train_dict, test_dict, alg_rec, 50, auc_list, 'alg')
+    f1 = rec_test(train_dict, test_dict, alg_rec, 50, auc_list, 'alg')
 
     base = Ranking(train_frame.values, beta=0, gama=0)
-    base.train_model(banch_size=1000, steps=5000, epoches=100)
-    base_rec = base.predict()
+    base.train_model(banch_size=100, steps=5000, epoches=100)
+    base_rec = base.predict(topn=50)
 
     f2 = rec_test(train_dict, test_dict, base_rec, 50, auc_list, 'base')
-    test.p_r_curve(f2, point=True)
+    # test.p_r_curve(f2, point=True)
 
-    # test.p_r_curve(pd.concat([f1, f2]), line=True, point=True)    
+    test.p_r_curve(pd.concat([f1, f2]), line=True, point=True)    
     
