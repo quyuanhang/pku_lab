@@ -11,11 +11,11 @@ import theano_lstm
 
 class BPR(object):
 
-    def __init__(self, rank, n_users, n_items, base_weight=1, match_weight=1, posi_weight=1, lambda_all=0.01, learning_rate=0.1, sgd_weight=0.8):
+    def __init__(self, rank, n_users, n_items, base_weight=1, match_weight=1, posi_weight=1, lambda_all=0.01, learning_rate=0.1, sgd_weight=1):
         self._rank = rank
         self._base_weight = base_weight
-        self._match_weight = match_weight
-        self._posi_weight = posi_weight
+        self._beta = match_weight
+        self._gama = posi_weight
         self._n_users = n_users
         self._n_items = n_items
         self._lambda = lambda_all
@@ -31,6 +31,23 @@ class BPR(object):
     def _configure_theano(self):
         theano.config.mode = 'FAST_RUN'
         theano.config.floatX = 'float32'
+
+    def _init_super_weight(self):
+        if self._beta != None:
+            self._beta = [self._beta] * self._n_users
+            self._gama = [self._gama] * self._n_users
+        else:
+            self._beta = []
+            self._gama = []
+            for user in range(self._n_users):
+                m = len(self._match_dict[user])
+                p = len(self._pos_dict[user])
+                self._beta.append(m /(m + p))
+                self._gama.append(p /(m + p))
+        self._beta = numpy.array(self._beta)
+        self._gama = numpy.array(self._gama)
+        return
+        
 
     def _generate_train_model_function(self):
         u = T.lvector('u')
@@ -50,18 +67,37 @@ class BPR(object):
         x_uj = T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j]
         x_uk = T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k]
 
-        x_uijk = T.log(self._match_weight * T.nnet.sigmoid(x_ui - x_uj) + 
-                       self._posi_weight * T.nnet.sigmoid(x_uj - x_uk) + 
-                       self._base_weight * T.nnet.sigmoid(x_ui - x_uk))
+# =============================================================================
+        x_uijk = 0.1 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
+# =============================================================================
+        
+# 基本bpr======================================================================
+        # x_uijk = T.log(T.nnet.sigmoid(x_ui - x_uk))        
+# ============================================================================
 
-        obj_uij = T.sum(x_uijk -
-                        self._lambda * (self.W[u] ** 2).sum(axis=1) -
-                        self._lambda * (self.H[i] ** 2).sum(axis=1) -
-                        self._lambda * (self.H[j] ** 2).sum(axis=1) -
-                        self._lambda * (self.H[k] ** 2).sum(axis=1) -
-                        self._lambda * (self.B[i] ** 2 + self.B[j] ** 2 + self.B[k] ** 2))
-                        # self._lambda * (self.B[i] ** 2 + self.B[k] ** 2))
-        cost = - obj_uij
+# user 个性化权重 =============================================================
+        # x_uijk = T.log(T.dot(beta, T.nnet.sigmoid(x_ui - x_uj)) + 
+        #                T.dot(gama, T.nnet.sigmoid(x_uj - x_uk)) + 
+        #                T.nnet.sigmoid(x_ui - x_uk))
+# ============================================================================
+
+# listwise损失=================================================================
+        # exp_x_ui = T.exp(T.dot(self.W[u], self.H[i].T).diagonal() + self.B[i])
+        # exp_x_uj = T.exp(T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j])
+        # exp_x_uk = T.exp(T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k])
+        # list_x_uijk = T.log(exp_x_ui/(exp_x_ui + exp_x_uj + exp_x_uk) * exp_x_uj/(exp_x_uj + exp_x_uk))
+# =============================================================================
+
+        # obj_uij = T.mean(x_uijk +
+        #                 self._lambda * (self.W[u] ** 2).sum(axis=1) -
+        #                 self._lambda * (self.H[i] ** 2).sum(axis=1) -
+        #                 self._lambda * (self.H[j] ** 2).sum(axis=1) -
+        #                 self._lambda * (self.H[k] ** 2).sum(axis=1) -
+        #                 self._lambda * (self.B[i] ** 2 + self.B[j] ** 2 + self.B[k] ** 2))
+        #                 # self._lambda * (self.B[i] ** 2 + self.B[k] ** 2))
+        # cost = - obj_uij
+
+        cost = - T.mean(x_uijk)
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
@@ -70,12 +106,16 @@ class BPR(object):
                        (self.H, self.H - self._learning_rate * g_cost_H),
                        (self.B, self.B - self._learning_rate * g_cost_B)]
         self.train_sgd = theano.function(
+            # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=sgd_updates)
             inputs=[u, i, j, k], outputs=cost, updates=sgd_updates)
+            # inputs=[u, i, k], outputs=cost, updates=sgd_updates)
 
         ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
             cost, [self.W, self.H, self.B], method="adadelta")
         self.train_ada = theano.function(
+            # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=ada_updates)
             inputs=[u, i, j, k], outputs=cost, updates=ada_updates)
+            # inputs=[u, i, k], outputs=cost, updates=ada_updates)
 
     def train(self, train_data, epochs=1, batch_size=100):
         if len(train_data) < batch_size:
@@ -84,6 +124,7 @@ class BPR(object):
             batch_size = len(train_data)
         self._match_dict, self._pos_dict, self._train_users, self._train_items = self._data_to_dict(
             train_data)
+        self._init_super_weight()        
         n_sgd_samples = len(self._train_users) * epochs
         sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
             n_sgd_samples)
@@ -91,20 +132,28 @@ class BPR(object):
         t0 = time.time()
         print('\rsgd Processed')
         for z in tqdm(range(math.floor(n_sgd_samples * self._sgd_weight / batch_size - 1))):
+            low, high = z * batch_size, (z + 1) * batch_size
+            sgd_user = sgd_users[low: high]
             self.train_sgd(
-                sgd_users[z * batch_size: (z + 1) * batch_size],
-                sgd_match_items[z * batch_size: (z + 1) * batch_size],
-                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
-                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
+                sgd_user,
+                sgd_match_items[low: high],
+                sgd_pos_items[low: high],
+                sgd_neg_items[low: high],
+                # self._beta[sgd_user], 
+                # self._gama[sgd_user]
             )
         print('\rada Processed')
         _z = z
         for z in tqdm(range(_z, math.floor(n_sgd_samples / batch_size)-2)):
+            low, high = z * batch_size, (z + 1) * batch_size
+            sgd_user = sgd_users[low: high]
             self.train_ada(
-                sgd_users[z * batch_size: (z + 1) * batch_size],
-                sgd_match_items[z * batch_size: (z + 1) * batch_size],
-                sgd_pos_items[z * batch_size: (z + 1) * batch_size],
-                sgd_neg_items[z * batch_size: (z + 1) * batch_size]
+                sgd_user,
+                sgd_match_items[low: high],
+                sgd_pos_items[low: high],
+                sgd_neg_items[low: high],
+                # self._beta[sgd_user], 
+                # self._gama[sgd_user]
             )
 
         if n_sgd_samples > 0:
@@ -123,7 +172,8 @@ class BPR(object):
             # 生成三类item
             match_item = self._match_dict[sgd_user][numpy.random.randint(len(self._match_dict[sgd_user]))]
             pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
-            dis_neg_pool = set(self._match_dict[sgd_user]) | set(self._pos_dict[sgd_user])
+            dis_neg_pool = set(self._match_dict[sgd_user])
+            dis_neg_pool |= set(self._pos_dict[sgd_user])
             neg_item = numpy.random.randint(self._n_items)
             while neg_item in dis_neg_pool:
                 neg_item = numpy.random.randint(self._n_items)

@@ -68,22 +68,22 @@ class Ranking():
             samples.append([sgd_user, match_item, pos_item, neg_item])
         return np.array(samples)
 
-    def init_super_weight(self):
-        if self._beta != None:
-            self._beta = tf.constant([self._beta] * self._n_users, dtype=tf.float32)
-            self._gama = tf.constant([self._gama] * self._n_users, dtype=tf.float32)
-        else:            
-            beta = []
-            gama = []
-            for user in self._users:
-                m = len(self._match_dict[user])
-                p = len(self._pos_dict[user])
-                beta.append(m /(m + p))
-                gama.append(p /(m + p))
-                beta.append
-            self._beta = tf.constant(beta, dtype=tf.float32)
-            self._gama = tf.constant(gama, dtype=tf.float32)
-        return
+    # def init_super_weight(self):
+    #     if self._beta != None:
+    #         self._beta = tf.constant([self._beta] * self._n_users, dtype=tf.float32)
+    #         self._gama = tf.constant([self._gama] * self._n_users, dtype=tf.float32)
+    #     else:            
+    #         beta = []
+    #         gama = []
+    #         for user in self._users:
+    #             m = len(self._match_dict[user])
+    #             p = len(self._pos_dict[user])
+    #             beta.append(m /(m + p))
+    #             gama.append(p /(m + p))
+    #             beta.append
+    #         self._beta = tf.constant(beta, dtype=tf.float32)
+    #         self._gama = tf.constant(gama, dtype=tf.float32)
+    #     return
         
     def init_ranking(self):
         u = tf.placeholder(tf.int32, [None])
@@ -94,7 +94,6 @@ class Ranking():
         self._user_emb_w = tf.Variable(tf.random_normal([self._n_users, self._n_features], stddev=1 / (self._n_features ** 0.5)))
         self._item_emb_w = tf.Variable(tf.random_normal([self._n_items, self._n_features], stddev=1 / (self._n_features ** 0.5)))
         self._item_b = tf.Variable(tf.zeros([self._n_items]))
-
         u_emb = tf.nn.embedding_lookup(self._user_emb_w, u)
         i_emb = tf.nn.embedding_lookup(self._item_emb_w, i)
         i_b = tf.nn.embedding_lookup(self._item_b, i)
@@ -103,36 +102,41 @@ class Ranking():
         k_emb = tf.nn.embedding_lookup(self._item_emb_w, k)
         k_b = tf.nn.embedding_lookup(self._item_b, k)
         
-        beta = tf.nn.embedding_lookup(self._beta, u)
-        gama = tf.nn.embedding_lookup(self._gama, u)
+        # beta = tf.nn.embedding_lookup(self._beta, u)
+        # gama = tf.nn.embedding_lookup(self._gama, u)
 
-        qij = i_b - j_b + tf.reduce_sum(tf.multiply(u_emb, (i_emb - j_emb)), 1, keep_dims=True)
-        qjk = j_b - k_b + tf.reduce_sum(tf.multiply(u_emb, (j_emb - k_emb)), 1, keep_dims=True)
-        qik = i_b - k_b + tf.reduce_sum(tf.multiply(u_emb, (i_emb - k_emb)), 1, keep_dims=True)
+        # qij = i_b - j_b + tf.reduce_mean(tf.multiply(u_emb, (i_emb - j_emb)), 1, keep_dims=True)
+        # qjk = j_b - k_b + tf.reduce_mean(tf.multiply(u_emb, (j_emb - k_emb)), 1, keep_dims=True)
+        # qik = i_b - k_b + tf.reduce_mean(tf.multiply(u_emb, (i_emb - k_emb)), 1, keep_dims=True)
 
-        obj = tf.log(tf.sigmoid(qik)) + tf.multiply(beta, tf.log(tf.sigmoid(qij))) + tf.multiply(gama, tf.log(tf.sigmoid(qjk)))
+        # obj = tf.log(tf.sigmoid(qik)) + tf.multiply(beta, tf.log(tf.sigmoid(qij))) + tf.multiply(gama, tf.log(tf.sigmoid(qjk)))
         # obj = tf.log(tf.sigmoid(qik) + tf.multiply(beta, tf.sigmoid(qij)) + tf.multiply(gama, tf.sigmoid(qjk)))
 
+        qi = tf.exp(tf.add(tf.reduce_sum(tf.multiply(u_emb, i_emb), axis=1, keep_dims=True), i_b))
+        qj = tf.exp(tf.add(tf.reduce_sum(tf.multiply(u_emb, j_emb), axis=1, keep_dims=True), j_b))
+        qk = tf.exp(tf.add(tf.reduce_sum(tf.multiply(u_emb, k_emb), axis=1, keep_dims=True), k_b))
+        obj = tf.log(qj /(qi + qj + qk) * (qj / (qj + qk)))
+
         l2 = tf.add_n([
-            tf.reduce_sum(tf.square(u_emb)), 
-            tf.reduce_sum(tf.square(i_emb)),
-            tf.reduce_sum(tf.square(j_emb)),
-            tf.reduce_sum(tf.square(k_emb)),
-            tf.reduce_sum(tf.square(i_b)),
-            tf.reduce_sum(tf.square(j_b)),
-            tf.reduce_sum(tf.square(k_b))
+            tf.reduce_mean(tf.square(u_emb)), 
+            tf.reduce_mean(tf.square(i_emb)),
+            tf.reduce_mean(tf.square(j_emb)),
+            tf.reduce_mean(tf.square(k_emb)),
+            tf.reduce_mean(tf.square(i_b)),
+            tf.reduce_mean(tf.square(j_b)),
+            tf.reduce_mean(tf.square(k_b))
         ])
 
         # obj = tf.log(tf.sigmoid(qik))
         # l2 = tf.add_n([
-        #     tf.reduce_sum(tf.multiply(u_emb, u_emb)), 
-        #     tf.reduce_sum(tf.multiply(i_emb, i_emb)),
-        #     tf.reduce_sum(tf.multiply(k_emb, k_emb)),
-        #     tf.reduce_sum(tf.square(i_b)),
-        #     tf.reduce_sum(tf.square(k_b))            
+        #     tf.reduce_mean(tf.multiply(u_emb, u_emb)), 
+        #     tf.reduce_mean(tf.multiply(i_emb, i_emb)),
+        #     tf.reduce_mean(tf.multiply(k_emb, k_emb)),
+        #     tf.reduce_mean(tf.square(i_b)),
+        #     tf.reduce_mean(tf.square(k_b))            
         # ])
 
-        ranking_loss = l2 * self._lambda - tf.reduce_sum(obj)        
+        ranking_loss = l2 * self._lambda - tf.reduce_mean(obj)        
 
 
         return u, i, j, k, ranking_loss
@@ -140,7 +144,7 @@ class Ranking():
 
     def train_model(self, banch_size, steps, epoches):
         steps_per_epoche = steps // epoches
-        self.init_super_weight()
+        # self.init_super_weight()
         u, i, j, k, loss = self.init_ranking()
 
         sgd = tf.train.GradientDescentOptimizer(self._learning_rate).minimize(loss)        
@@ -208,18 +212,21 @@ if __name__ == '__main__':
     train_dict = test.data_format(train_frame, min_rate=2)
     auc_list = []
     
-    algorithm = Ranking(train_frame.values)      
-    algorithm.train_model(banch_size=100, steps=5000, epoches=100)
-    alg_rec = algorithm.predict(topn=50)
 
-    f1 = rec_test(train_dict, test_dict, alg_rec, 50, auc_list, 'alg')
 
     base = Ranking(train_frame.values, beta=0, gama=0)
-    base.train_model(banch_size=100, steps=5000, epoches=100)
+    base.train_model(banch_size=100, steps=3000, epoches=100)
     base_rec = base.predict(topn=50)
 
     f2 = rec_test(train_dict, test_dict, base_rec, 50, auc_list, 'base')
-    # test.p_r_curve(f2, point=True)
-
-    test.p_r_curve(pd.concat([f1, f2]), line=True, point=True)    
+    test.p_r_curve(f2, point=True)
+    
+#    algorithm = Ranking(train_frame.values)      
+#    algorithm.train_model(banch_size=10, steps=5000, epoches=100)
+#    alg_rec = algorithm.predict(topn=50)
+#
+#    f1 = rec_test(train_dict, test_dict, alg_rec, 50, auc_list, 'alg')
+#    test.p_r_curve(f1, point=True)
+#
+#    test.p_r_curve(pd.concat([f1, f2]), line=True, point=True)    
     

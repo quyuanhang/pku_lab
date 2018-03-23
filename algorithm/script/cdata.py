@@ -85,9 +85,6 @@ def run():
             frame = count_degree(frame, 1)        
             if (frame['degree_x'].min() >= N and frame['degree_y'].min() >= N):
                 break
-        print('rest users', len(set(frame.iloc[:, 0])))
-        print('rest items', len(set(frame.iloc[:, 1])))
-        print('rest matches', len(frame))
         return frame.iloc[:, :3]
 
 
@@ -117,8 +114,15 @@ def run():
         old_male_set, old_female_set, male_rating_dict, match_dict, col=['male', 'female', 'rate'])
     female_posi_data = build_pos_data(
         old_male_set, old_female_set, famale_rating_dict, match_dict, col=['male', 'female', 'rate'])
+    print('rest users', len(old_male_set))
+    print('rest items', len(old_female_set))
+    print('rest matches', len(old_match_frame))
     print('male positive num', len(male_posi_data))
     print('female positive num', len(female_posi_data))
+    print('sparseness:', len(old_match_frame) / len(old_male_set) / len(old_female_set),
+                         len(male_posi_data) / len(old_male_set) / len(old_female_set),
+                         len(female_posi_data) / len(old_male_set) / len(old_female_set))
+    
 
     # 划分数据
     old_match_frame['rate'] = 2
