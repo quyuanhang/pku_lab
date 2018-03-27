@@ -46,9 +46,9 @@ def step():
     alg_frame = rec_test(train_dict, test_dict, alg_rec, topn, auc_list, 'algorithm')
 
     #bpr
-    bpr = Algorithm(train_frame, bweight=0, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
-    bpr_rec = bpr.predict(mode='dict')
-    bpr_frame = rec_test(train_dict, test_dict, bpr_rec, topn, auc_list, 'bpr')
+    # bpr = Algorithm(train_frame, bweight=0, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
+    # bpr_rec = bpr.predict(mode='dict')
+    # bpr_frame = rec_test(train_dict, test_dict, bpr_rec, topn, auc_list, 'bpr')
 
     #csvd
     item_train_frame = pd.read_csv('../data/female_train.csv')
@@ -57,7 +57,8 @@ def step():
     csvd_rec = csvd.predict()
     csvd_frame = rec_test(train_dict, test_dict, csvd_rec, topn, auc_list, 'csvd')
 
-    frame = pd.concat([ibcf_frame, alg_frame, bpr_frame, csvd_frame])
+    # frame = pd.concat([ibcf_frame, alg_frame, bpr_frame, csvd_frame])
+    frame = pd.concat([ibcf_frame, alg_frame, csvd_frame])
     frame['auc'] = auc_list
     t = time.ctime()
     fname = t[4:16].replace(' ', '-').replace(':', '-')
@@ -80,7 +81,8 @@ def log_reduce():
     reduce_list = list()
     if len(frame) == 4:
         return frame
-    for alg in ['algorithm', 'bpr', 'ibcf', 'csvd']:
+    # for alg in ['algorithm', 'bpr', 'ibcf', 'csvd']:
+    for alg in ['algorithm', 'ibcf', 'csvd']:        
         reduce_series = frame.loc[alg].mean()
         reduce_series.name = alg
         reduce_list.append(reduce_series)
@@ -101,7 +103,8 @@ if __name__ == '__main__':
      loop(1)
 
      frame = log_reduce()
-     frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])
+    #  frame = frame.reindex(index=['algorithm', 'bpr', 'ibcf', 'csvd'])
+     frame = frame.reindex(index=['algorithm', 'ibcf', 'csvd'])     
      frame.to_csv('../log/reduce.csv')
      test.p_r_curve(frame.iloc[:, :-1], line=True, save='../log/reduce.png')
 

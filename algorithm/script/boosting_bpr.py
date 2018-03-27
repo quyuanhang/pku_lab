@@ -68,7 +68,7 @@ class BPR(object):
         x_uk = T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k]
 
 # =============================================================================
-        x_uijk = 0.1 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
+        # x_uijk = 0.1 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
 # =============================================================================
         
 # 基本bpr======================================================================
@@ -82,10 +82,10 @@ class BPR(object):
 # ============================================================================
 
 # listwise损失=================================================================
-        # exp_x_ui = T.exp(T.dot(self.W[u], self.H[i].T).diagonal() + self.B[i])
-        # exp_x_uj = T.exp(T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j])
-        # exp_x_uk = T.exp(T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k])
-        # list_x_uijk = T.log(exp_x_ui/(exp_x_ui + exp_x_uj + exp_x_uk) * exp_x_uj/(exp_x_uj + exp_x_uk))
+        exp_x_ui = T.exp(x_ui)
+        exp_x_uj = T.exp(x_uj)
+        exp_x_uk = T.exp(x_uk)
+        x_uijk = T.log(exp_x_ui/(exp_x_ui + exp_x_uj + exp_x_uk) * exp_x_uj/(exp_x_uj + exp_x_uk))
 # =============================================================================
 
         # obj_uij = T.mean(x_uijk +

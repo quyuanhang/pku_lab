@@ -89,19 +89,20 @@ class CSVD(object):
             for i in item_train_raw if i[0] in user_to_index and i[1] in item_to_index])
         self.model = CML(len(user_to_index), len(item_to_index)) 
 
-    def train(self, steps=5000):
-        l_loss = 0
-        stop = 0
+    def train(self, steps=5000, banch_size=100):
         for i in tqdm(range(steps)):
+# =============================================================================
+# 批量梯度下降
+#             ubanch = np.random.randint(len(self.train_user), size=banch_size)
+#             ibanch = np.random.randint(len(self.train_item), size=banch_size)
+#             c_loss = self.model.partial_fit(self.train_user[ubanch][:, [0, 1]], self.train_user[ubanch][:, [2]], 
+#                                 self.train_item[ibanch][:, [0, 1]], self.train_item[ibanch][:, [2]])    
+# =============================================================================、
+# 全梯度下降
             c_loss = self.model.partial_fit(self.train_user[:, [0, 1]], self.train_user[:, [2]], 
                                 self.train_item[:, [0, 1]], self.train_item[:, [2]])    
-            if abs(c_loss - l_loss) == 0:
-                stop += 1
-            else:
-                stop =0
-            if stop >= 100:
-                break
-            l_loss = c_loss
+# =============================================================================
+
         return True
 
     def predict(self, topn=False):
@@ -127,7 +128,7 @@ if __name__ == '__main__':
     user_train_frame = pd.read_csv('../data/male_train.csv')    
     item_train_frame = pd.read_csv('../data/female_train.csv')
     csvd = CSVD(user_train_frame, item_train_frame)
-    csvd.train(steps=1000)
+    csvd.train(steps=3000)
     csvd_rec = csvd.predict(100)
 
     test_frame = pd.read_csv('../data/male_test.csv')
