@@ -48,7 +48,7 @@ if __name__ == '__main__':
     
     # cdata.run()
     
-    train_frame = pd.read_csv('../data/male_train.csv')    
+    train_frame = pd.read_csv('../data/male_train.csv')
     test_frame = pd.read_csv('../data/male_test.csv')
     test_dict = test.data_format(test_frame, min_rate=2)
     train_dict = test.data_format(train_frame, min_rate=2)
@@ -56,7 +56,10 @@ if __name__ == '__main__':
     topn = 50
 
     # algorithm
-    algorithm = Algorithm(train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
+    female = pd.read_csv('../data/female_train.csv')
+    boosting_train_frame = pd.concat([train_frame, female]).drop_duplicates()
+    algorithm = Algorithm(boosting_train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
+#    algorithm = Algorithm(train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
     alg_rec = algorithm.predict(mode='dict')
     precision_list, recall_list = test.precision_recall_list(
         alg_rec, test_dict, train_dict, range(5, topn, 5))

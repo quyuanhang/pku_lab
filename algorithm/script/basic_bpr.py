@@ -52,13 +52,13 @@ class BPR(object):
 
         x_uij = T.log(T.nnet.sigmoid(x_ui - x_uj))
 
-        # obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) -
-        #                 self._lambda_u * (self.W[u] ** 2).sum(axis=1) -
-        #                 self._lambda_i * (self.H[i] ** 2).sum(axis=1) -
-        #                 self._lambda_j * (self.H[j] ** 2).sum(axis=1) -
-        #                 self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
-        # cost = - obj_uij
-        cost = - T.mean(x_uij)
+        obj_uij = T.sum(T.log(T.nnet.sigmoid(x_uij)) -
+                        self._lambda_u * (self.W[u] ** 2).sum(axis=1) -
+                        self._lambda_i * (self.H[i] ** 2).sum(axis=1) -
+                        self._lambda_j * (self.H[j] ** 2).sum(axis=1) -
+                        self._lambda_bias * (self.B[i] ** 2 + self.B[j] ** 2))
+        cost = - obj_uij
+        # cost = - T.mean(x_uij)
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
@@ -73,6 +73,8 @@ class BPR(object):
             cost, [self.W, self.H, self.B], method="adadelta")
         self.train_ada = theano.function(
             inputs=[u, i, j], outputs=cost, updates=ada_updates)
+
+        return True
 
     def train(self, train_data, epochs=1, batch_size=100):
         if len(train_data) < batch_size:

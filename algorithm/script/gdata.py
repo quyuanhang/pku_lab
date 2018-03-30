@@ -51,8 +51,10 @@ class sampleGenerator(object):
         print('u-i sample'.ljust(20) + 'i-u sample'.ljust(20) + 'friend sample'.ljust(20))
         print(str(len(u_i_list)).ljust(20) + str(len(i_u_list)).ljust(20) + str(len(friend_list)).ljust(20))
 
-        u_i_list = pd.DataFrame(u_i_list).sample(n=4 * len(friend_list))
-        i_u_list = pd.DataFrame(i_u_list).sample(n=4 * len(friend_list))
+# =============================================================================
+#         u_i_list = pd.DataFrame(u_i_list).sample(n=4 * len(friend_list))
+#         i_u_list = pd.DataFrame(i_u_list).sample(n=4 * len(friend_list))
+# =============================================================================
                         
         return pd.DataFrame(friend_list), pd.DataFrame(u_i_list), pd.DataFrame(i_u_list)
 
@@ -133,7 +135,7 @@ class sampleCleaner():
 
 
 if __name__ == '__main__':
-    sample_generator = sampleGenerator(n_user=10000, n_item=10000, sparseness=0.001)
+    sample_generator = sampleGenerator(n_user=3000, n_item=3000, sparseness=0.001)
     f, u, i = sample_generator.generate_sample()
     sample_cleaner = sampleCleaner(f, u, i)
     sample_cleaner.iter_filter_old(N=3)

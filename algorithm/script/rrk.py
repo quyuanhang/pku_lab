@@ -69,18 +69,18 @@ class Ranking():
                 match_item = self._match_dict[sgd_user][np.random.randint(len(self._match_dict[sgd_user]))]
                 dis_neg_pool = set(self._match_dict[sgd_user])
                 # user的单边行为
-                # if sgd_user in self._pos_dict:
-                #     pos_item = self._pos_dict[sgd_user][np.random.randint(len(self._pos_dict[sgd_user]))]
-                #     dis_neg_pool |= set(self._pos_dict[sgd_user])
+                if sgd_user in self._pos_dict:
+                    pos_item = self._pos_dict[sgd_user][np.random.randint(len(self._pos_dict[sgd_user]))]
+                    dis_neg_pool |= set(self._pos_dict[sgd_user])
                 neg_item = np.random.randint(self._n_items)
                 while neg_item in dis_neg_pool:
                     neg_item = np.random.randint(self._n_items)
                 # item的单边行为
                 if match_item in self._i_match_dict:
                     i_dis_neg_pool = set(self._i_match_dict[match_item])
-                    # if match_item in self._i_pos_dict:
-                    #     i_pos_user = self._i_pos_dict[match_item][np.random.randint(len(self._i_pos_dict[match_item]))]
-                    #     dis_neg_pool |= set(self._i_match_dict[match_item])
+                    if match_item in self._i_pos_dict:
+                        i_pos_user = self._i_pos_dict[match_item][np.random.randint(len(self._i_pos_dict[match_item]))]
+                        dis_neg_pool |= set(self._i_match_dict[match_item])
                     i_neg_user = np.random.randint(self._n_users)
                     while i_neg_user in i_dis_neg_pool:
                         i_neg_user = np.random.randint(self._n_users)
@@ -97,7 +97,9 @@ class Ranking():
 
         self._user_emb_w = tf.Variable(tf.random_normal([self._n_users, self._n_features], stddev=1 / (self._n_features ** 0.5)))
         self._item_emb_w = tf.Variable(tf.random_normal([self._n_items, self._n_features], stddev=1 / (self._n_features ** 0.5)))
-        
+        self._item_b = tf.Variable(tf.zeros([self._n_items]))
+        self._user_b = tf.Variable(tf.zeros([self._n_users]))
+
         u_emb = tf.nn.embedding_lookup(self._user_emb_w, u)
         # v_emb = tf.nn.embedding_lookup(self._user_emb_w, v)
         w_emb = tf.nn.embedding_lookup(self._user_emb_w, w)
@@ -106,15 +108,21 @@ class Ranking():
         # j_emb = tf.nn.embedding_lookup(self._item_emb_w, j)
         k_emb = tf.nn.embedding_lookup(self._item_emb_w, k)
 
-        qui = tf.exp(tf.reduce_sum(tf.multiply(u_emb, i_emb), axis=1, keep_dims=True))
-        quk = tf.exp(tf.reduce_sum(tf.multiply(u_emb, k_emb), axis=1, keep_dims=True))
-        qwi = tf.exp(tf.reduce_sum(tf.multiply(w_emb, i_emb), axis=1, keep_dims=True))
+        u_b = tf.nn.embedding_lookup(self._user_b, u)
+        w_b = tf.nn.embedding_lookup(self._user_b, w)
+        i_b = tf.nn.embedding_lookup(self._item_b, i)
+        k_b = tf.nn.embedding_lookup(self._item_b, k)
+
+        qui = tf.exp(tf.reduce_sum(tf.multiply(u_emb, i_emb), axis=1, keep_dims=True) + i_b)
+        quk = tf.exp(tf.reduce_sum(tf.multiply(u_emb, k_emb), axis=1, keep_dims=True) + k_b)
+        qwi = tf.exp(tf.reduce_sum(tf.multiply(w_emb, i_emb), axis=1, keep_dims=True) + i_b)
         
         # obj = tf.multiply(tf.sigmoid(qui - quk), tf.sigmoid(qui - qwi))
 
         # log_loss = - tf.log(obj)
 
-        log_loss = - tf.sigmoid(qui - quk) - tf.sigmoid(qui - qwi)
+        # log_loss = - tf.sigmoid(qui - quk) - tf.sigmoid(qui - qwi)
+        log_loss = - tf.reduce_mean(tf.log(tf.sigmoid(qui - quk)))
 
         return u, w, i, k, log_loss
 

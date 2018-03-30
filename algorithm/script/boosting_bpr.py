@@ -6,7 +6,9 @@ import sys
 import numpy
 import theano
 import theano.tensor as T
-import theano_lstm
+# =============================================================================
+# import theano_lstm
+# =============================================================================
 
 
 class BPR(object):
@@ -67,8 +69,8 @@ class BPR(object):
         x_uj = T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j]
         x_uk = T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k]
 
-# =============================================================================
-        # x_uijk = 0.1 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
+# 增加posi权重1=================================================================
+        # x_uijk = 0.5 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log( T.nnet.sigmoid(x_ui - x_uk))
 # =============================================================================
         
 # 基本bpr======================================================================
@@ -97,7 +99,14 @@ class BPR(object):
         #                 # self._lambda * (self.B[i] ** 2 + self.B[k] ** 2))
         # cost = - obj_uij
 
-        cost = - T.mean(x_uijk)
+        l2 = ((self.W[u] ** 2).sum(axis=1) +
+            (self.H[i] ** 2).sum(axis=1) +
+            (self.H[j] ** 2).sum(axis=1) +
+            (self.H[k] ** 2).sum(axis=1) +
+            (self.B[i] ** 2 + self.B[j] ** 2 + self.B[k] ** 2))
+        
+
+        cost = - T.sum(x_uijk - self._lambda * l2)
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
@@ -107,15 +116,19 @@ class BPR(object):
                        (self.B, self.B - self._learning_rate * g_cost_B)]
         self.train_sgd = theano.function(
             # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=sgd_updates)
-            inputs=[u, i, j, k], outputs=cost, updates=sgd_updates)
+            inputs=[u, i, j, k], outputs=cost, updates=sgd_updates, on_unused_input='warn')
             # inputs=[u, i, k], outputs=cost, updates=sgd_updates)
 
-        ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
-            cost, [self.W, self.H, self.B], method="adadelta")
-        self.train_ada = theano.function(
-            # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=ada_updates)
-            inputs=[u, i, j, k], outputs=cost, updates=ada_updates)
-            # inputs=[u, i, k], outputs=cost, updates=ada_updates)
+# =============================================================================
+#         ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
+#             cost, [self.W, self.H, self.B], method="adadelta")
+#         self.train_ada = theano.function(
+#             # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=ada_updates)
+#             inputs=[u, i, j, k], outputs=cost, updates=ada_updates, on_unused_input='warn')
+#             # inputs=[u, i, k], outputs=cost, updates=ada_updates)
+# =============================================================================
+
+        return True
 
     def train(self, train_data, epochs=1, batch_size=100):
         if len(train_data) < batch_size:
@@ -142,19 +155,21 @@ class BPR(object):
                 # self._beta[sgd_user], 
                 # self._gama[sgd_user]
             )
-        print('\rada Processed')
-        _z = z
-        for z in tqdm(range(_z, math.floor(n_sgd_samples / batch_size)-2)):
-            low, high = z * batch_size, (z + 1) * batch_size
-            sgd_user = sgd_users[low: high]
-            self.train_ada(
-                sgd_user,
-                sgd_match_items[low: high],
-                sgd_pos_items[low: high],
-                sgd_neg_items[low: high],
-                # self._beta[sgd_user], 
-                # self._gama[sgd_user]
-            )
+# =============================================================================
+#         print('\rada Processed')
+#         _z = z
+#         for z in tqdm(range(_z, math.floor(n_sgd_samples / batch_size)-2)):
+#             low, high = z * batch_size, (z + 1) * batch_size
+#             sgd_user = sgd_users[low: high]
+#             self.train_ada(
+#                 sgd_user,
+#                 sgd_match_items[low: high],
+#                 sgd_pos_items[low: high],
+#                 sgd_neg_items[low: high],
+#                 # self._beta[sgd_user], 
+#                 # self._gama[sgd_user]
+#             )
+# =============================================================================
 
         if n_sgd_samples > 0:
             t2 = time.time()
