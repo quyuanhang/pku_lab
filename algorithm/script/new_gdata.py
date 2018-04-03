@@ -15,11 +15,15 @@ class sampleGenerator(object):
         self.user_attr = self.random_matrix(self.n_user, self.n_feature, one_hot=True)
         self.item_attr = self.random_matrix(self.n_item, self.n_feature, one_hot=True)
         self.user_prefer = self.random_matrix(self.n_user, self.n_feature, one_hot=True)
-        self.item_prefer = self.random_matrix(self.n_item, self.n_feature, one_hot=True)        
+        self.item_prefer = self.random_matrix(self.n_item, self.n_feature, one_hot=True)
+        self.user_bias = self.random_matrix(self.n_user, 1, one_hot=True)
+        self.item_bias = self.random_matrix(1, self.n_item, one_hot=True)
         self.noise = np.random.normal(loc=0, scale=0.1, size=(self.n_user, self.n_item)) 
         self.user_rank = np.matmul(self.user_prefer, self.item_attr.T)
         self.item_rank = np.matmul(self.item_prefer, self.user_attr.T)
-        self.q_matrix = (self.user_rank + self.item_rank) / 2 + self.noise
+        self.q_matrix = (self.user_rank + self.item_rank + self.noise +
+                        np.tile(self.user_bias, [1, self.n_item]) + 
+                        np.tile(self.item_bias, [self.n_user, 1]))
 
     def random_matrix(self, row, column, one_hot=False):
         # return np.random.normal(loc=self.mu, scale=self.sigma, size=(row * column)).reshape(row, column)
@@ -30,11 +34,9 @@ class sampleGenerator(object):
 
     def generate_sample(self):
         m = self.q_matrix.copy()
-        m[self.user_rank < self.mu] = 0
-        m[self.item_rank < self.mu] = 0        
         friend_list, u_i_list, i_u_list = list(), list(), list()
-        hedge = np.percentile(m, 100-self.sparseness*100)
-        like_hedge = np.percentile(m, 100-((self.sparseness) * 10)*100)
+        hedge = np.percentile(m, (1 - self.sparseness) * 100)
+        like_hedge = np.percentile(m, (1 - self.sparseness * 10) * 100)
         for i in range(m.shape[0]):
             for j in range(m.shape[1]):
                 qij = m[i, j]
@@ -139,7 +141,7 @@ if __name__ == '__main__':
     sample_generator = sampleGenerator(n_user=10000, n_item=10000, sparseness=0.001)
     f, u, i = sample_generator.generate_sample()
     sample_cleaner = sampleCleaner(f, u, i)
-    sample_cleaner.iter_filter_old(N=3, M=100)
+    sample_cleaner.iter_filter_old(N=3, M=400)
     sample_cleaner.sava_sample(t_size=0.5, save_path = '../data/')
                         
 

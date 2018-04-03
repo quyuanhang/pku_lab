@@ -158,7 +158,7 @@ if __name__ == '__main__':
         recommend, test_dict, train_dict, range(5, 100, 5))
     frame = pd.DataFrame(precision_list + recall_list).T
     frame.index=['ibcf']
-    test.p_r_curve(frame, line=True)
+    test.p_r_curve(frame, point=True)
     
     
 

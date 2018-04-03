@@ -83,7 +83,9 @@ def run():
             frame = filter_old(frame.iloc[:, :3], N, M)
             frame = count_degree(frame, 0)
             frame = count_degree(frame, 1)        
-            if (frame['degree_x'].min() >= N and frame['degree_y'].min() >= N):
+            if (frame['degree_x'].min() >= N and frame['degree_y'].min() >= N and
+                frame['degree_x'].max() < M and frame['degree_y'].max() < M):
+                print(frame.describe())
                 break
         return frame.iloc[:, :3]
 

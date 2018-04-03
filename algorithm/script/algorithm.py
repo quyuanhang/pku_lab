@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 # 本地库
 import basic_bpr
 import boosting_bpr
+import update_bpr
 import test
 import gdata
 import cdata
@@ -30,7 +31,7 @@ class Algorithm(object):
             for i in male_train_raw if i[0] in male_to_index and i[1] in female_to_index])
         print('\nproblem space:', len(male_list), len(female_list))
         self.model = model(rank=50, n_users=len(male_to_index),
-                    n_items=len(female_to_index), base_weight=bweight, match_weight=mweight, posi_weight=pweight, sgd_weight=1)    
+                    n_items=len(female_to_index), base_weight=bweight, match_weight=mweight, posi_weight=pweight, sgd_weight=0.8)    
         self.model.train(self.male_train, epochs=epochs)
 
     def predict(self, mode='dict', top=False):
@@ -55,17 +56,29 @@ if __name__ == '__main__':
 
     topn = 50
 
+    frame = pd.DataFrame()
+
     # algorithm
     female = pd.read_csv('../data/female_train.csv')
     boosting_train_frame = pd.concat([train_frame, female]).drop_duplicates()
-    algorithm = Algorithm(boosting_train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
-#    algorithm = Algorithm(train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
+    algorithm = Algorithm(boosting_train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=update_bpr.BPR)
     alg_rec = algorithm.predict(mode='dict')
     precision_list, recall_list = test.precision_recall_list(
         alg_rec, test_dict, train_dict, range(5, topn, 5))
     frame = pd.DataFrame(precision_list + recall_list).T
     frame.index=['algorithm']
  
+    # old alg
+    algorithm = Algorithm(train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
+    # algorithm = Algorithm(train_frame, bweight=1, mweight=0, pweight=0, epochs=1000, model=boosting_bpr.BPR)
+    alg_rec = algorithm.predict(mode='dict')
+    precision_list, recall_list = test.precision_recall_list(
+        alg_rec, test_dict, train_dict, range(5, topn, 5))
+    old_frame = pd.DataFrame(precision_list + recall_list).T
+    old_frame.index=['old']
+    frame = pd.concat([frame, old_frame])
+
+
     # bpr
     bpr = Algorithm(train_frame, bweight=1, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
     bpr_rec = bpr.predict(mode='dict')

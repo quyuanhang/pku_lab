@@ -6,9 +6,7 @@ import sys
 import numpy
 import theano
 import theano.tensor as T
-# =============================================================================
-# import theano_lstm
-# =============================================================================
+import theano_lstm
 
 
 class BPR(object):
@@ -70,7 +68,7 @@ class BPR(object):
         x_uk = T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k]
 
 # 增加posi权重1=================================================================
-        # x_uijk = 0.5 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log( T.nnet.sigmoid(x_ui - x_uk))
+        x_uijk = 0.5 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
 # =============================================================================
         
 # 基本bpr======================================================================
@@ -84,10 +82,10 @@ class BPR(object):
 # ============================================================================
 
 # listwise损失=================================================================
-        exp_x_ui = T.exp(x_ui)
-        exp_x_uj = T.exp(x_uj)
-        exp_x_uk = T.exp(x_uk)
-        x_uijk = T.log(exp_x_ui/(exp_x_ui + exp_x_uj + exp_x_uk) * exp_x_uj/(exp_x_uj + exp_x_uk))
+        # exp_x_ui = T.exp(x_ui)
+        # exp_x_uj = T.exp(x_uj)
+        # exp_x_uk = T.exp(x_uk)
+        # x_uijk = T.log(exp_x_ui/(exp_x_ui + exp_x_uj + exp_x_uk) * exp_x_uj/(exp_x_uj + exp_x_uk))
 # =============================================================================
 
         # obj_uij = T.mean(x_uijk +
@@ -119,14 +117,12 @@ class BPR(object):
             inputs=[u, i, j, k], outputs=cost, updates=sgd_updates, on_unused_input='warn')
             # inputs=[u, i, k], outputs=cost, updates=sgd_updates)
 
-# =============================================================================
-#         ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
-#             cost, [self.W, self.H, self.B], method="adadelta")
-#         self.train_ada = theano.function(
-#             # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=ada_updates)
-#             inputs=[u, i, j, k], outputs=cost, updates=ada_updates, on_unused_input='warn')
-#             # inputs=[u, i, k], outputs=cost, updates=ada_updates)
-# =============================================================================
+        ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
+            cost, [self.W, self.H, self.B], method="adadelta")
+        self.train_ada = theano.function(
+            # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=ada_updates)
+            inputs=[u, i, j, k], outputs=cost, updates=ada_updates, on_unused_input='warn')
+            # inputs=[u, i, k], outputs=cost, updates=ada_updates)
 
         return True
 
@@ -155,21 +151,19 @@ class BPR(object):
                 # self._beta[sgd_user], 
                 # self._gama[sgd_user]
             )
-# =============================================================================
-#         print('\rada Processed')
-#         _z = z
-#         for z in tqdm(range(_z, math.floor(n_sgd_samples / batch_size)-2)):
-#             low, high = z * batch_size, (z + 1) * batch_size
-#             sgd_user = sgd_users[low: high]
-#             self.train_ada(
-#                 sgd_user,
-#                 sgd_match_items[low: high],
-#                 sgd_pos_items[low: high],
-#                 sgd_neg_items[low: high],
-#                 # self._beta[sgd_user], 
-#                 # self._gama[sgd_user]
-#             )
-# =============================================================================
+        print('\rada Processed')
+        _z = z
+        for z in tqdm(range(_z, math.floor(n_sgd_samples / batch_size)-2)):
+            low, high = z * batch_size, (z + 1) * batch_size
+            sgd_user = sgd_users[low: high]
+            self.train_ada(
+                sgd_user,
+                sgd_match_items[low: high],
+                sgd_pos_items[low: high],
+                sgd_neg_items[low: high],
+                # self._beta[sgd_user], 
+                # self._gama[sgd_user]
+            )
 
         if n_sgd_samples > 0:
             t2 = time.time()
