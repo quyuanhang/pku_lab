@@ -2,9 +2,11 @@
 import sys
 import heapq
 # 第三方库
+import sklearn as skl
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 def data_format(train_frame, min_rate):
@@ -52,6 +54,46 @@ def auc(train_dict, rank_dict, test_dict):
     sys.stderr.write("\n")
     sys.stderr.flush()
     return np.mean(auc_values)  
+
+def dcg_score(y_true, y_score, k=None):
+    if not k:
+        k = len(y_score)
+    order = np.argsort(y_score)[::-1]
+    y_true = np.take(y_true, order[:k])
+    gain = 2 ** y_true - 1
+    #print(gain)
+    discounts = np.log2(np.arange(len(y_true)) + 2)
+    #print(discounts)
+    return np.sum(gain / discounts)
+
+
+def ndcg_score(y_true, y_score, k=5):
+    return dcg_score(y_true, y_score, k) / dcg_score(y_true, y_true, k)
+
+
+def ndcg(train_dict, rank_dict, test_dict, k=None):
+    ndcgs = []
+    user_set = set(rank_dict.keys()) & set(test_dict.keys())
+    for user in tqdm(user_set):
+        order = np.array(test_dict[user].items())
+        y_true = order[:, 1].reshape(1, -1)
+        order = order[:, 0].reshape(1, -1)
+        y_score = [rank_dict[user][item] for item in order]
+        ndcgs.append(ndcg_score(y_true, y_score, k))
+    return np.mean(ndcgs)
+
+
+def mAP(train_dict, rank_dict, test_dict):
+    aps = []
+    user_set = set(rank_dict.keys()) & set(test_dict.keys())
+    for user in tqdm(user_set):
+        order = np.array(test_dict[user].items())
+        y_true = order[:, 1].reshape(1, -1)
+        order = order[:, 0].reshape(1, -1)
+        y_score = [rank_dict[user][item] for item in order]
+        aps.append(skl.metrics.average_precision_score(y_true, y_score))
+    return np.mean(aps)        
+    
 
 def precision_recall(recommend_dict, lable_dict, train_dict, top=1000, mode='base', sam=1):
     tp, p, r = 0, 0, 0
