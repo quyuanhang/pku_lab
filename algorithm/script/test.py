@@ -2,7 +2,7 @@
 import sys
 import heapq
 # 第三方库
-import sklearn as skl
+import sklearn.metrics as skm
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -75,10 +75,9 @@ def ndcg(train_dict, rank_dict, test_dict, k=None):
     ndcgs = []
     user_set = set(rank_dict.keys()) & set(test_dict.keys())
     for user in tqdm(user_set):
-        order = np.array(test_dict[user].items())
-        y_true = order[:, 1].reshape(1, -1)
-        order = order[:, 0].reshape(1, -1)
-        y_score = [rank_dict[user][item] for item in order]
+        items = set(test_dict[user].keys()) | set(rank_dict[user].keys())
+        y_score = [rank_dict[user].get(item, 0) for item in items]
+        y_true = [1 if item in test_dict[user] else 0 for item in items]
         ndcgs.append(ndcg_score(y_true, y_score, k))
     return np.mean(ndcgs)
 
@@ -87,11 +86,10 @@ def mAP(train_dict, rank_dict, test_dict):
     aps = []
     user_set = set(rank_dict.keys()) & set(test_dict.keys())
     for user in tqdm(user_set):
-        order = np.array(test_dict[user].items())
-        y_true = order[:, 1].reshape(1, -1)
-        order = order[:, 0].reshape(1, -1)
-        y_score = [rank_dict[user][item] for item in order]
-        aps.append(skl.metrics.average_precision_score(y_true, y_score))
+        items = set(test_dict[user].keys()) | set(rank_dict[user].keys())
+        y_score = [rank_dict[user].get(item, 0) for item in items]
+        y_true = [1 if item in test_dict[user] else 0 for item in items]
+        aps.append(skm.average_precision_score(y_true, y_score))
     return np.mean(aps)        
     
 
@@ -146,7 +144,7 @@ def precision_recall_list(recommend_dict, lable_dict, train_dict, top_range, mod
         precision, recall = precision_recall(recommend_dict, lable_dict, train_dict, top=k, mode=mode, sam=sam).values[0]
         precision_list.append(precision)
         recall_list.append(recall)
-    return precision_list, recall_list
+    return np.array(precision_list), np.array(recall_list)
 
 def p_r_curve(frame, line=False, point=False, save=False):
     ls_list = map(lambda x: x, [ '-' , '--' , '-.' , ':' , 'steps'])
@@ -208,6 +206,9 @@ def sri(train_dict, test_dict, rec_dict, topn):
 
 
 if __name__ == '__main__':
-    frame = pd.read_csv('../savelog/log_success_3000/final.csv', index_col=0)
-    top_f1(frame.iloc[:, :-1], ['top 5', 'top 10', 'top 50'], save='../savelog/log_success_3000/f1.png')
-        
+    train_frame = pd.read_csv('../data/male_train.csv')
+    test_frame = pd.read_csv('../data/male_test.csv')
+    test_dict = data_format(test_frame, min_rate=2)
+    train_dict = data_format(train_frame, min_rate=2)
+    ndcg = ndcg(train_dict, test_dict, test_dict)
+    mAP = mAP(train_dict, test_dict, test_dict)
