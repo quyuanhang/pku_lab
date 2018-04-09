@@ -71,24 +71,24 @@ def ndcg_score(y_true, y_score, k=5):
     return dcg_score(y_true, y_score, k) / dcg_score(y_true, y_true, k)
 
 
-def ndcg(train_dict, rank_dict, test_dict, k=None):
+def ndcg(train_dict, rank_dict, test_dict, k):
     ndcgs = []
     user_set = set(rank_dict.keys()) & set(test_dict.keys())
     for user in tqdm(user_set):
         items = set(test_dict[user].keys()) | set(rank_dict[user].keys())
-        y_score = [rank_dict[user].get(item, 0) for item in items]
-        y_true = [1 if item in test_dict[user] else 0 for item in items]
+        y_score = [rank_dict[user].get(item, 0) for item in items] + [0] * max(k - len(items), 0)
+        y_true = [1 if item in test_dict[user] else 0 for item in items] + [0] * max(k - len(items), 0)     
         ndcgs.append(ndcg_score(y_true, y_score, k))
     return np.mean(ndcgs)
 
 
-def mAP(train_dict, rank_dict, test_dict):
+def mAP(train_dict, rank_dict, test_dict, k):
     aps = []
     user_set = set(rank_dict.keys()) & set(test_dict.keys())
     for user in tqdm(user_set):
         items = set(test_dict[user].keys()) | set(rank_dict[user].keys())
-        y_score = [rank_dict[user].get(item, 0) for item in items]
-        y_true = [1 if item in test_dict[user] else 0 for item in items]
+        y_score = [rank_dict[user].get(item, 0) for item in items] + [0] * max(k - len(items), 0)
+        y_true = [1 if item in test_dict[user] else 0 for item in items] + [0] * max(k - len(items), 0)     
         aps.append(skm.average_precision_score(y_true, y_score))
     return np.mean(aps)        
     

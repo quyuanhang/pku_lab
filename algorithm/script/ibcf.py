@@ -151,16 +151,17 @@ if __name__ == '__main__':
     test_dict = test.data_format(test_frame, min_rate=2)
     train_dict = test.data_format(train_frame, min_rate=2)
 
-    auc = test.auc(train_dict, test_dict, recommend)
-    print('auc:%0.2f'%(auc))
-
-    precision_list, recall_list = test.precision_recall_list(
-        recommend, test_dict, train_dict, range(5, 100, 5))
-    frame = pd.DataFrame(precision_list + recall_list).T
-    frame.index=['ibcf']
-    test.p_r_curve(frame, point=True)
+# =============================================================================
+#     auc = test.auc(train_dict, test_dict, recommend)
+#     print('auc:%0.2f'%(auc))
+# 
+#     precision_list, recall_list = test.precision_recall_list(
+#         recommend, test_dict, train_dict, range(5, 100, 5))
+#     frame = pd.DataFrame(precision_list + recall_list).T
+#     frame.index=['ibcf']
+#     test.p_r_curve(frame, point=True)    
+# =============================================================================
     
-    
-
+    mAP = test.ndcg(train_dict, recommend, test_dict, 100)
 
 

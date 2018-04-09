@@ -113,16 +113,14 @@ class BPR(object):
                        (self.H, self.H - self._learning_rate * g_cost_H),
                        (self.B, self.B - self._learning_rate * g_cost_B)]
         self.train_sgd = theano.function(
-            # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=sgd_updates)
-            inputs=[u, i, j, k], outputs=cost, updates=sgd_updates, on_unused_input='warn')
+            inputs=[u, i, j, k], outputs=cost, updates=sgd_updates)
+            # inputs=[u, i, j, k], outputs=cost, updates=sgd_updates, on_unused_input='warn')
             # inputs=[u, i, k], outputs=cost, updates=sgd_updates)
 
         ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
             cost, [self.W, self.H, self.B], method="adadelta")
         self.train_ada = theano.function(
-            # inputs=[u, i, j, k, beta, gama], outputs=cost, updates=ada_updates)
             inputs=[u, i, j, k], outputs=cost, updates=ada_updates, on_unused_input='warn')
-            # inputs=[u, i, k], outputs=cost, updates=ada_updates)
 
         return True
 
