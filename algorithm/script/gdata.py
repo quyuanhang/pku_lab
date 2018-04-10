@@ -136,10 +136,10 @@ class sampleCleaner():
 
 
 if __name__ == '__main__':
-    sample_generator = sampleGenerator(n_user=1000, n_item=1000, sparseness=0.001)
+    sample_generator = sampleGenerator(n_user=10000, n_item=10000, sparseness=0.001)
     f, u, i = sample_generator.generate_sample()
     sample_cleaner = sampleCleaner(f, u, i)
-    sample_cleaner.iter_filter_old(N=3, M=100)
+    sample_cleaner.iter_filter_old(N=3, M=500)
     sample_cleaner.sava_sample(t_size=0.5, save_path = '../data/')
                         
 

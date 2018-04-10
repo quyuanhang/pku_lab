@@ -2,6 +2,7 @@
 import collections
 #第三方
 import tqdm
+import numpy as np
 import pandas as pd
 
 import test
@@ -148,19 +149,17 @@ if __name__ == '__main__':
     recommend = my_ibcf.recommend_all(100)
 
     test_frame = pd.read_csv('../data/male_test.csv')
-    test_dict = test.data_format(test_frame, min_rate=2)
-    train_dict = test.data_format(train_frame, min_rate=2)
+    test_dict = test.data_format(test_frame, min_rate=1)
+    train_dict = test.data_format(train_frame, min_rate=1)
 
-# =============================================================================
-#     auc = test.auc(train_dict, test_dict, recommend)
-#     print('auc:%0.2f'%(auc))
-# 
-#     precision_list, recall_list = test.precision_recall_list(
-#         recommend, test_dict, train_dict, range(5, 100, 5))
-#     frame = pd.DataFrame(precision_list + recall_list).T
-#     frame.index=['ibcf']
-#     test.p_r_curve(frame, point=True)    
-# =============================================================================
+    auc = test.auc(train_dict, test_dict, recommend)
+    print('auc:%0.2f'%(auc))
+
+    precision_list, recall_list = test.precision_recall_list(
+        recommend, test_dict, train_dict, range(5, 100, 5))
+    frame = pd.DataFrame(np.concatenate((precision_list, recall_list))).T
+    frame.index=['ibcf']
+    test.p_r_curve(frame, point=True)    
     
     mAP = test.ndcg(train_dict, recommend, test_dict, 100)
 

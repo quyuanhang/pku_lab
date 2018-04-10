@@ -15,46 +15,47 @@ class CML(object):
         self.n_users = n_users
         self.n_items = n_items
         self.embed_dim = embed_dim
-        self.input1 = tf.placeholder(tf.int32, [None, 2])
-        self.input2 = tf.placeholder(tf.int32, [None, 2])
-        self.input1_score = tf.placeholder(tf.float32, [None, 1])
-        self.input2_score = tf.placeholder(tf.float32, [None, 1])
+        with tf.device('/cpu:0'):
+            self.input1 = tf.placeholder(tf.int32, [None, 2])
+            self.input2 = tf.placeholder(tf.int32, [None, 2])
+            self.input1_score = tf.placeholder(tf.float32, [None, 1])
+            self.input2_score = tf.placeholder(tf.float32, [None, 1])
 
-        self.master_learning_rate = master_learning_rate
+            self.master_learning_rate = master_learning_rate
 
-        self.W = tf.Variable(tf.random_normal([self.n_users, self.embed_dim],
-                                              stddev=1 / (self.embed_dim ** 0.5), dtype=tf.float32))
-        self.V = tf.Variable(tf.random_normal([n_items, embed_dim],
-                                              stddev=1 / (embed_dim ** 0.5), dtype=tf.float32))
+            self.W = tf.Variable(tf.random_normal([self.n_users, self.embed_dim],
+                                                stddev=1 / (self.embed_dim ** 0.5), dtype=tf.float32))
+            self.V = tf.Variable(tf.random_normal([n_items, embed_dim],
+                                                stddev=1 / (embed_dim ** 0.5), dtype=tf.float32))
 
-        self.sigma1 = tf.Variable(tf.random_normal(
-            [self.embed_dim], dtype=tf.float32))
-        self.sigma2 = tf.Variable(tf.random_normal(
-            [self.embed_dim], dtype=tf.float32))
+            self.sigma1 = tf.Variable(tf.random_normal(
+                [self.embed_dim], dtype=tf.float32))
+            self.sigma2 = tf.Variable(tf.random_normal(
+                [self.embed_dim], dtype=tf.float32))
 
-        self.W_1_1 = tf.nn.embedding_lookup(self.W, self.input1[:, 0])
-        self.V_1_1 = tf.nn.embedding_lookup(self.V, self.input1[:, 1])
-        self.loss_supvise1 = self.input1_score[:, 0]
-        self.A1 = tf.multiply(tf.multiply(self.W_1_1, self.V_1_1), self.sigma1)
-        self.A1 = tf.reduce_sum(self.A1, axis=1)
-        self.loss1 = (tf.reduce_mean(
-            tf.squared_difference(self.loss_supvise1, self.A1)))
+            self.W_1_1 = tf.nn.embedding_lookup(self.W, self.input1[:, 0])
+            self.V_1_1 = tf.nn.embedding_lookup(self.V, self.input1[:, 1])
+            self.loss_supvise1 = self.input1_score[:, 0]
+            self.A1 = tf.multiply(tf.multiply(self.W_1_1, self.V_1_1), self.sigma1)
+            self.A1 = tf.reduce_sum(self.A1, axis=1)
+            self.loss1 = (tf.reduce_mean(
+                tf.squared_difference(self.loss_supvise1, self.A1)))
 
-        self.W_1_2 = tf.nn.embedding_lookup(self.W, self.input2[:, 0])
-        self.V_1_2 = tf.nn.embedding_lookup(self.V, self.input2[:, 1])
-        self.loss_supvise2 = self.input2_score[:, 0]
-        self.A2 = tf.multiply(tf.multiply(self.W_1_2, self.V_1_2), self.sigma2)
-        self.A2 = tf.reduce_sum(self.A2, axis=1)
-        self.loss2 = (tf.reduce_mean(
-            tf.squared_difference(self.loss_supvise2, self.A2)))
+            self.W_1_2 = tf.nn.embedding_lookup(self.W, self.input2[:, 0])
+            self.V_1_2 = tf.nn.embedding_lookup(self.V, self.input2[:, 1])
+            self.loss_supvise2 = self.input2_score[:, 0]
+            self.A2 = tf.multiply(tf.multiply(self.W_1_2, self.V_1_2), self.sigma2)
+            self.A2 = tf.reduce_sum(self.A2, axis=1)
+            self.loss2 = (tf.reduce_mean(
+                tf.squared_difference(self.loss_supvise2, self.A2)))
 
-        self.loss = self.loss1 + self.loss2
+            self.loss = self.loss1 + self.loss2
 
-        self.optimize = tf.train.AdadeltaOptimizer(
-            self.master_learning_rate).minimize(self.loss)        
-        init = tf.global_variables_initializer()
-        self.sess = tf.Session()
-        self.sess.run(init)
+            self.optimize = tf.train.AdadeltaOptimizer(
+                self.master_learning_rate).minimize(self.loss)        
+            init = tf.global_variables_initializer()
+            self.sess = tf.Session()
+            self.sess.run(init)
 
 
     def partial_fit(self, X1, X2, Y1, Y2):

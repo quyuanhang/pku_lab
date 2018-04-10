@@ -68,7 +68,7 @@ class BPR(object):
         x_uk = T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k]
 
 # 增加posi权重1=================================================================
-        x_uijk = 0.5 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
+        x_uijk =0 *  T.log(T.nnet.sigmoid(x_ui - x_uj)) + 0.5 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
 # =============================================================================
         
 # 基本bpr======================================================================
