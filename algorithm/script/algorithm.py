@@ -70,13 +70,13 @@ if __name__ == '__main__':
 
 
     # bpr
-#    bpr = Algorithm(train_frame, bweight=1, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
-#    bpr_rec = bpr.predict(mode='dict')
-#    precision_list, recall_list = test.precision_recall_list(
-#        bpr_rec, test_dict, train_dict, range(5, topn, 5))
-#    bpr_frame = pd.DataFrame(list(precision_list) + list(recall_list)).T
-#    bpr_frame.index=['bpr']
-#    frame = pd.concat([frame, bpr_frame])
+    bpr = Algorithm(train_frame, bweight=1, mweight=1, pweight=0, epochs=1000, model=basic_bpr.BPR)
+    bpr_rec = bpr.predict(mode='dict')
+    precision_list, recall_list = test.precision_recall_list(
+        bpr_rec, test_dict, train_dict, range(5, topn, 5))
+    bpr_frame = pd.DataFrame(list(precision_list) + list(recall_list)).T
+    bpr_frame.index=['bpr']
+    frame = pd.concat([frame, bpr_frame])
 
     test.p_r_curve(frame, line=False, point=True)
     

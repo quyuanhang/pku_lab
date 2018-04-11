@@ -52,8 +52,9 @@ class BPR(object):
     def _generate_train_model_function(self):
         u = T.lvector('u')
         i = T.lvector('i')
+        ni = T.lvector('ni')        
         j = T.lvector('j')
-        k = T.lvector('k')
+        nj = T.lvector('nj')
 
         self.W = theano.shared(numpy.random.random(
             (self._n_users, self._rank)).astype('float32'), name='W')
@@ -64,47 +65,22 @@ class BPR(object):
             self._n_items).astype('float32'), name='B')
 
         x_ui = T.dot(self.W[u], self.H[i].T).diagonal() + self.B[i]
+        x_uni = T.dot(self.W[u], self.H[ni].T).diagonal() + self.B[ni]
         x_uj = T.dot(self.W[u], self.H[j].T).diagonal() + self.B[j]
-        x_uk = T.dot(self.W[u], self.H[k].T).diagonal() + self.B[k]
+        x_unj = T.dot(self.W[u], self.H[nj].T).diagonal() + self.B[nj]
 
-# 增加posi权重1=================================================================
-        x_uijk =0 *  T.log(T.nnet.sigmoid(x_ui - x_uj)) + 0.5 * T.log(T.nnet.sigmoid(x_uj - x_uk)) + T.log(T.nnet.sigmoid(x_ui - x_uk))
-# =============================================================================
+        obj = T.log(T.nnet.sigmoid(x_ui - x_uni)) + T.log(T.nnet.sigmoid(x_uj - x_unj))
         
-# 基本bpr======================================================================
-        # x_uijk = T.log(T.nnet.sigmoid(x_ui - x_uk))        
-# ============================================================================
-
-# user 个性化权重 =============================================================
-        # x_uijk = T.log(T.dot(beta, T.nnet.sigmoid(x_ui - x_uj)) + 
-        #                T.dot(gama, T.nnet.sigmoid(x_uj - x_uk)) + 
-        #                T.nnet.sigmoid(x_ui - x_uk))
-# ============================================================================
-
-# listwise损失=================================================================
-        # exp_x_ui = T.exp(x_ui)
-        # exp_x_uj = T.exp(x_uj)
-        # exp_x_uk = T.exp(x_uk)
-        # x_uijk = T.log(exp_x_ui/(exp_x_ui + exp_x_uj + exp_x_uk) * exp_x_uj/(exp_x_uj + exp_x_uk))
-# =============================================================================
-
-        # obj_uij = T.mean(x_uijk +
-        #                 self._lambda * (self.W[u] ** 2).sum(axis=1) -
-        #                 self._lambda * (self.H[i] ** 2).sum(axis=1) -
-        #                 self._lambda * (self.H[j] ** 2).sum(axis=1) -
-        #                 self._lambda * (self.H[k] ** 2).sum(axis=1) -
-        #                 self._lambda * (self.B[i] ** 2 + self.B[j] ** 2 + self.B[k] ** 2))
-        #                 # self._lambda * (self.B[i] ** 2 + self.B[k] ** 2))
-        # cost = - obj_uij
 
         l2 = ((self.W[u] ** 2).sum(axis=1) +
             (self.H[i] ** 2).sum(axis=1) +
             (self.H[j] ** 2).sum(axis=1) +
-            (self.H[k] ** 2).sum(axis=1) +
-            (self.B[i] ** 2 + self.B[j] ** 2 + self.B[k] ** 2))
+            (self.H[ni] ** 2).sum(axis=1) +
+            (self.H[nj] ** 2).sum(axis=1) +
+            (self.B[i] ** 2 + self.B[j] ** 2 + self.B[ni] ** 2 + self.B[nj] ** 2))
         
 
-        cost = - T.sum(x_uijk - self._lambda * l2)
+        cost = - T.sum(obj - self._lambda * l2)
 
         g_cost_W = T.grad(cost=cost, wrt=self.W)
         g_cost_H = T.grad(cost=cost, wrt=self.H)
@@ -113,14 +89,12 @@ class BPR(object):
                        (self.H, self.H - self._learning_rate * g_cost_H),
                        (self.B, self.B - self._learning_rate * g_cost_B)]
         self.train_sgd = theano.function(
-            inputs=[u, i, j, k], outputs=cost, updates=sgd_updates)
-            # inputs=[u, i, j, k], outputs=cost, updates=sgd_updates, on_unused_input='warn')
-            # inputs=[u, i, k], outputs=cost, updates=sgd_updates)
+            inputs=[u, i, ni, j, nj], outputs=cost, updates=sgd_updates)
 
         ada_updates, gsums, xsums, lr, max_norm = theano_lstm.create_optimization_updates(
             cost, [self.W, self.H, self.B], method="adadelta")
         self.train_ada = theano.function(
-            inputs=[u, i, j, k], outputs=cost, updates=ada_updates, on_unused_input='warn')
+            inputs=[u, i, ni, j, nj], outputs=cost, updates=ada_updates, on_unused_input='warn')
 
         return True
 
@@ -133,7 +107,7 @@ class BPR(object):
             train_data)
         self._init_super_weight()        
         n_sgd_samples = len(self._train_users) * epochs
-        sgd_users, sgd_match_items, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
+        sgd_users, sgd_match_items, sgd_nomatch_items, sgd_pos_items, sgd_neg_items = self._uniform_user_sampling(
             n_sgd_samples)
         z = 0
         t0 = time.time()
@@ -144,6 +118,7 @@ class BPR(object):
             self.train_sgd(
                 sgd_user,
                 sgd_match_items[low: high],
+                sgd_nomatch_items[low: high],
                 sgd_pos_items[low: high],
                 sgd_neg_items[low: high],
                 # self._beta[sgd_user], 
@@ -157,6 +132,7 @@ class BPR(object):
             self.train_ada(
                 sgd_user,
                 sgd_match_items[low: high],
+                sgd_nomatch_items[low: high],                
                 sgd_pos_items[low: high],
                 sgd_neg_items[low: high],
                 # self._beta[sgd_user], 
@@ -174,22 +150,26 @@ class BPR(object):
             "Generating %s random training samples\n" % str(n_samples))
         sgd_users = numpy.array(list(self._train_users))[
             numpy.random.randint(len(self._train_users), size=n_samples)]
-        sgd_users_update, sgd_match_items, sgd_pos_items, sgd_neg_items = [], [], [], []
+        sgd_users_update, sgd_match_items, sgd_nomatch_items, sgd_pos_items, sgd_neg_items = [], [], [], [], []
         for sgd_user in tqdm(sgd_users):
-            # 生成三类item
+            # 生成两对item
             match_item = self._match_dict[sgd_user][numpy.random.randint(len(self._match_dict[sgd_user]))]
-            pos_item = self._pos_dict[sgd_user][numpy.random.randint(len(self._pos_dict[sgd_user]))]
             dis_neg_pool = set(self._match_dict[sgd_user])
+            dm_item = numpy.random.randint(self._n_items)
+            while dm_item in dis_neg_pool:
+                dm_item = numpy.random.randint(self._n_items)
             dis_neg_pool |= set(self._pos_dict[sgd_user])
+            pos_item = list(dis_neg_pool)[numpy.random.randint(len(dis_neg_pool))]
             neg_item = numpy.random.randint(self._n_items)
             while neg_item in dis_neg_pool:
                 neg_item = numpy.random.randint(self._n_items)
             # 写入样本列表
             sgd_users_update.append(sgd_user)
             sgd_match_items.append(match_item)
+            sgd_nomatch_items.append(dm_item)
             sgd_pos_items.append(pos_item)
             sgd_neg_items.append(neg_item)
-        return sgd_users_update, sgd_match_items, sgd_pos_items, sgd_neg_items
+        return sgd_users_update, sgd_match_items, sgd_nomatch_items, sgd_pos_items, sgd_neg_items
 
     def predictions(self, user_index):
         w = self.W.get_value()
