@@ -205,10 +205,47 @@ def sri(train_dict, test_dict, rec_dict, topn):
     return mean(sri_list), mean(sr_list), mean(bsr_list)
 
 
+def emb_plot(data, legend, metrics):
+    '''
+    label在图示(legend)中显示。若为数学公式，则最好在字符串前后添加"$"符号
+    color：b:blue、g:green、r:red、c:cyan、m:magenta、y:yellow、k:black、w:white、、、
+    线型：-  --   -.  :    , 
+    marker：.  ,   o   v    <    *    +    1
+    '''
+    #plt.figure(figsize=(10,5))
+    plt.grid(linestyle = "--")      #设置背景网格线为虚线
+    ax = plt.gca()
+    ax.spines['top'].set_visible(False)  #去掉上边框
+    ax.spines['right'].set_visible(False) #去掉右边框
+
+    line_store = ('-' , '--' , '-.' , ':' , ',')
+    marker_store = ('o', 'v', '^', '<', '>', '8', 's', 'p', '*', 'h', 'H', 'D', 'd', 'P', 'X')
+    
+    x = data.index.levels[0]
+    for i in range(len(legend)):
+        y = data.xs(legend[i], level=1).loc[:, metrics]
+        plt.plot(x, y, label=legend[i], ls=line_store[i], marker=marker_store[i])
+    
+    plt.xlabel('number of dimensions', fontsize=15)
+    plt.xscale('log')
+    plt.xticks(x, map(str, x))
+    #plt.xlim(0, 105)
+    
+    plt.ylabel(metrics.upper(), fontsize=15)
+    #plt.ylim(0, 1)
+
+    plt.legend(loc='lower left', framealpha=0.5)
+    # plt.legend(loc=0, numpoints=1)
+    # leg = plt.gca().get_legend()
+    # ltext = leg.get_texts()
+    # plt.setp(ltext, fontsize=12,fontweight='bold')
+
+    plt.savefig('../log/%s.svg' % metrics, format='svg')  #建议保存为svg格式，再用inkscape转为矢量图emf后插入word中
+    plt.show()
+    return
+
+
 if __name__ == '__main__':
-    train_frame = pd.read_csv('../data/male_train.csv')
-    test_frame = pd.read_csv('../data/male_test.csv')
-    test_dict = data_format(test_frame, min_rate=2)
-    train_dict = data_format(train_frame, min_rate=2)
-    ndcg = ndcg(train_dict, test_dict, test_dict)
-    mAP = mAP(train_dict, test_dict, test_dict)
+    df = pd.read_csv('../savelog/s_embed.csv', index_col=(0,1))
+    emb_plot(df,  ['RRK', 'BPR', 'IBCF', 'CSVD'], 'ndcg')
+    
